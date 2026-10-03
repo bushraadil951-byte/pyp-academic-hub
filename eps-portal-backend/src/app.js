@@ -37,6 +37,7 @@ export function createApp() {
   app.get('/health', (_req, res) => res.send('OK')); // same health check URL Render already uses
   app.use('/api/auth', authRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/analytics', analyticsRoutes);
   app.use('/api/teacher', teacherRoutes);
   app.use('/api/student', studentRoutes);
   app.use('/api/marks', marksRoutes);
