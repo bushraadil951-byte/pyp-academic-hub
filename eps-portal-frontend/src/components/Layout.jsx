@@ -5,7 +5,7 @@ import { ROLES, ROLE_LABELS } from '../constants.js';
 const NAV = {
   [ROLES.ADMIN]: [
     ['Main', [['/portal', '🏠', 'Home']]],
-    ['Manage', [['/admin/students', '👨‍🎓', 'Students'], ['/admin/teachers', '👩‍🏫', 'Teachers'], ['/admin/tests', '📝', 'IBT Mock Tests']]],
+    ['Manage', [['/admin/students', '👨‍🎓', 'Students'], ['/admin/teachers', '👩‍🏫', 'Teachers'], ['/admin/tests', '📝', 'IBT Mock Tests'], ['/analytics', '📈', 'IBT Analytics']]],
     ['Assessments', [['/marks/DT', '📊', 'Diagnostic Tests (DT)'], ['/marks/FA', '📋', 'Formative (FA)'], ['/marks/SA', '🧾', 'Summative (SA)']]],
     ['Student Development', [['/ib', '🌱', 'IB Profile'], ['/isp', '📖', 'ISP Profile'], ['/aptitude', '🎯', 'Aptitude']]],
   ],
@@ -14,7 +14,7 @@ const NAV = {
     ['Assessments', [['/marks/DT', '📊', 'Diagnostic Tests (DT)'], ['/marks/FA', '📋', 'Formative (FA)'], ['/marks/SA', '🧾', 'Summative (SA)']]],
     ['Student Development', [['/ib', '🌱', 'IB Profile'], ['/isp', '📖', 'ISP Profile'], ['/aptitude', '🎯', 'Aptitude']]],
   ],
-  [ROLES.STUDENT]: [['Main', [['/portal', '🏠', 'Home'], ['/student/progress/DT', '📊', 'My Diagnostics'], ['/student/ib', '🌱', 'My IB Profile'], ['/student/isp', '📖', 'My ISP Profile'], ['/student/aptitude', '🎯', 'My Aptitude']]]],
+  [ROLES.STUDENT]: [['Main', [['/portal', '🏠', 'Home'], ['/analytics', '📈', 'IBT Analytics'], ['/student/progress/DT', '📊', 'My Diagnostics'], ['/student/ib', '🌱', 'My IB Profile'], ['/student/isp', '📖', 'My ISP Profile'], ['/student/aptitude', '🎯', 'My Aptitude']]]],
 };
 
 export default function Layout({ title = 'Academic Hub', back }) {
