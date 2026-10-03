@@ -1,63 +1,76 @@
-# EPS PYP Academic Hub — Node.js API
+# EPS PYP Academic Hub — React frontend
 
-Express 4 + Mongoose 8 (MongoDB). Replaces the IBT part of `app.py`. Pairs with `eps-portal-frontend` (React).
-Requires Node 18+.
+Vite + React 18 + React Router 6 + Recharts. Replaces the Flask/Jinja templates and `static/` folder.
+Look and feel is unchanged: `src/index.css` is your old `style.css` plus the inline styles from `base.html`;
+`pages/login.css` and `pages/portal.css` are the old login and portal-home styles.
 
-## Run locally
+## Run it
 
-    cp .env.example .env        # set MONGODB_URI and JWT_SECRET
     npm install
-    npm run seed -- --sample    # admin + demo teachers/students/test (dev only)
-    npm run dev                 # http://localhost:5000
+    npm run dev          # http://localhost:5173, proxies /api -> http://localhost:5000
 
-Then in the frontend folder: `npm run dev` (it proxies `/api` to port 5000).
+Production build: `npm run build` (outputs `dist/`). Set `VITE_API_URL` to your Node API's URL when the
+API is hosted separately (e.g. two Render services); leave it empty if Express serves `dist/` itself.
 
-## Move your existing data from Neon (PostgreSQL)
+## What's ported (IBT module)
 
-    # .env: DATABASE_URL=<neon string>, MONGODB_URI=<atlas string>
-    npm run migrate
+| Flask route | React route |
+|---|---|
+| `/` login | `/` |
+| `/portal` | `/portal` |
+| `/admin`, `/admin/students`, `/admin/teachers`, `/admin/tests`, `/admin/tests/<id>/questions` | same paths |
+| `/teacher`, `/teacher/students` | same paths |
+| `/student`, `/student/test/<id>`, `/student/scores`, `/student/review/<id>` | same paths |
 
-Re-runnable. Users keep their current passwords: Flask hashes are accepted and upgraded to bcrypt on next login.
-Run it against a copy first and compare counts with the Neon tables.
+## Also ported: DT, FA and SA (marks module)
 
-## Deploy on Render
+| Flask route | React route |
+|---|---|
+| `/assessment/hub` | `/marks` |
+| `/admin/dt-dashboard`, `/assessment/<FA|SA>/dashboard` | `/marks/DT`, `/marks/FA`, `/marks/SA` |
+| `/admin/dt`, `/assessment/<atype>/entry` | `/marks/:kind/entry` |
+| `/admin/dt/upload`, `/assessment/<atype>/upload` (+ template) | `/marks/:kind/upload` (CSV is parsed in the browser) |
+| `/admin/dt/grade-analytics`, `/admin/dt/analytics`, `/assessment/<atype>/grade-analytics` | `/marks/:kind/analytics` |
+| `/admin/dt/cross-grade-analytics`, `/assessment/<atype>/cross-grade-analytics` | `/marks/:kind/cross-grade` (admin only) |
+| `/student/diagnostics` | `/student/progress/DT` |
 
-*One service (simplest):* build the frontend (`npm run build` in `eps-portal-frontend`), put `dist/` next to this folder
-and set `FRONTEND_DIST=../eps-portal-frontend/dist`. Build command `npm install`, start command `npm start`.
-Env vars: `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRET`. Health check path: `/health` (unchanged).
+Not ported yet (portal tiles open a "not ported yet" page): IB profile / ATL, ISP, Aptitude, admin IBT analytics,
+bulk student upload, and every PDF/Excel export (DT PDF reports and graphs, results downloads).
 
-*Two services:* host the React build as a Static Site; here set `CORS_ORIGIN=https://<your-frontend>` and
-`COOKIE_SAMESITE=none`; in the frontend set `VITE_API_URL=https://<this-service>`.
+## API contract the Node/Express backend must provide
 
-MongoDB Atlas: create a free cluster, add a database user, and allow Render's outbound IPs (or 0.0.0.0/0 while testing).
+All routes are JSON under `/api`, authenticated by an httpOnly session cookie (CORS: `credentials: true`).
+Errors: HTTP 4xx with `{ "error": "message" }`. Roles are `Resource_Manager`, `teacher`, `student`.
 
-## Layout
+| Method + path | Body / response |
+|---|---|
+| `POST /auth/login` | `{username,password}` → `{user:{id,name,role,grade}}` |
+| `GET /auth/me`, `POST /auth/logout` | `{user}` / `{}` |
+| `GET /admin/dashboard` | `{studentCount,activeTests,avgScore,submitted,byGrade:[{grade,avg}],bySubject:[{subject,avg}],recent:[{id,student,test,subject,percent,takenAt}]}` |
+| `GET/POST /admin/students`, `PUT/DELETE /admin/students/:id` | student `{id,name,username,grade,section,password?}` |
+| `GET/POST /admin/teachers`, `PUT/DELETE /admin/teachers/:id` | teacher `{id,name,username,grade,password?}` |
+| `GET/POST /admin/tests`, `PUT/DELETE /admin/tests/:id`, `POST /admin/tests/:id/toggle`, `POST /admin/tests/:id/recalculate` | test `{id,name,subject,grade,difficulty,duration,status,questionCount}` |
+| `GET/POST /admin/tests/:id/questions`, `PUT/DELETE /admin/tests/:id/questions/:qid` | GET → `{test,questions:[{id,section,passage,question,options[4],answer,image}]}` |
+| `GET /teacher/dashboard` | `{grade,studentCount,activeTests,avgScore,submitted,recent:[{id,student,test,percent,takenAt}]}` |
+| `GET /teacher/students` | `[{id,name,grade,section,testsTaken,avg}]` |
+| `GET /student/dashboard` | `{student,tests:[{id,name,subject,difficulty,duration}],completedTestIds,avg,results:[{id,test,percent,takenAt}]}` |
+| `GET /student/tests/:id` | `{test:{id,name,duration},questions}` — **omit `answer`** from questions here |
+| `POST /student/tests/:id/submit` | `{answers:{qid:optionIndex},time_taken}` → `{score,total,percent,section_scores}` |
+| `GET /student/scores` | `[{id,test,subject,score,total,percent,takenAt}]` |
+| `GET /student/results/:id` | `{test,result,review:[{question,given,correct,status}]}` |
 
-    server.js            start-up
-    src/app.js           middleware, route mounting, error handling
-    src/models/          User, MockTest (questions embedded), TestResult (unique per student+test),
-                         MarkSheet (DT/FA/SA: one document per subject+number+grade+section, marks embedded)
-    src/routes/          auth, admin, teacher, student, marks  (matches the frontend README's API contract)
-    src/utils/           scoring, Werkzeug-hash verification, helpers
-    scripts/             seed.js, migrate-from-postgres.js
+Marks module (`:kind` is `dt`, `fa` or `sa`; staff = teacher or admin, teachers are locked to their grade):
 
-## Behaviour changes vs. the Flask app
+| Method + path | Notes |
+|---|---|
+| `GET /marks/config` (staff) | `{academicYear,kinds,grades,gradeLocked,sections,isAdmin}` |
+| `GET /marks/hub` (staff) | `[{kind,label,totalSheets,totalMarks}]` |
+| `GET /marks/:kind/dashboard` (staff) | totals and per-grade student counts |
+| `GET/PUT /marks/:kind/entry` (staff) | GET `?grade&section&subject&number` → `{students,sheet,marks}`; PUT `{grade,section,subject,number,maxMarks,testDate,rows:[{studentId,marks,remarks}]}` → `{saved,removed,invalid}` |
+| `PUT /marks/:kind/bulk` (staff) | `{grade,section,number,maxMarks:{subject:n},rows:[{username,marks:{subject:value}}]}` |
+| `GET /marks/:kind/analytics` (staff) | `?grade&section` → students, classAvg, subjectOverall, classOverall |
+| `GET /marks/:kind/cross-grade` (admin) | per-grade subject averages |
+| `GET /marks/student-progress/:kind` (student) | own series and insights |
 
-- Sessions are an httpOnly JWT cookie (12 h) instead of a Flask session. Everyone is signed out at cut-over.
-- Login is rate-limited (10 attempts / 15 min / IP).
-- Students can only open or submit tests that are active and for their grade (Flask only checked the id).
-- The test endpoint never sends correct answers to the browser.
-- The seed creates no default `bk*123` admin: set `SEED_ADMIN_PASSWORD` or use the one printed once. Change the
-  password of any migrated account that still uses a known default.
-
-## DT, FA and SA
-
-The three assessment types share one model (`MarkSheet`) and one set of routes (`/api/marks/:kind/...`).
-`npm run migrate` now also imports `diagnostic_test`/`dt_mark` and `assessment`/`assessment_mark`.
-Behaviour notes: a blank mark deletes that student's mark (absent) for FA/SA too, and marks above the maximum are
-rejected everywhere (Flask only enforced this for DT). Academic year is `ACADEMIC_YEAR` in `src/config.js`.
-
-## Not ported yet
-
-IB profile / ATL, ISP, Aptitude, admin IBT analytics, bulk student upload, and all PDF/Excel exports.
-Those parts of `app.py` still need Node routes (and matching React pages).
+Server-side rules carried over from `app.py`: one attempt per student per test (return the existing result if
+re-submitted); teachers only see students in their assigned grade; students only see their own results.
