@@ -12,6 +12,7 @@ import teacherRoutes from './routes/teacher.js';
 import studentRoutes from './routes/student.js';
 import marksRoutes from './routes/marks.js';
 import profileRoutes from './routes/profile.js';
+import analyticsRoutes from './routes/analytics.js';
 
 export function createApp() {
   const app = express();
