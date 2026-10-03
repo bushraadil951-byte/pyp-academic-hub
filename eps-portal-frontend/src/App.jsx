@@ -32,6 +32,8 @@ import IspDashboard from './pages/profile/IspDashboard.jsx';
 import IspRate from './pages/profile/IspRate.jsx';
 import StudentIsp from './pages/profile/StudentIsp.jsx';
 import { AptitudeStaff, AptitudeStudent } from './pages/profile/Aptitude.jsx';
+import IbtAnalytics from './pages/admin/Analytics.jsx';
+import StudentUpload from './pages/admin/StudentUpload.jsx';
 
 // Replaces Flask's @login_required(role). Wrong role -> back to the portal; logged out -> login.
 function Guard({ roles, children }) {
@@ -51,6 +53,8 @@ export default function App() {
     ['/admin', [ADMIN], 'Dashboard', <AdminDashboard />],
     ['/admin/students', [ADMIN], 'Students', <AdminStudents />, '/admin'],
     ['/admin/teachers', [ADMIN], 'Teachers', <AdminTeachers />, '/admin'],
+    ['/admin/students/upload', [ADMIN], 'Upload Students', <StudentUpload />, '/admin/students'],
+    ['/analytics', [ADMIN, TEACHER], 'IBT Analytics', <IbtAnalytics />, '/portal'],
     ['/admin/tests', [ADMIN], 'IBT Mock Tests', <AdminTests />, '/admin'],
     ['/admin/tests/:testId/questions', [ADMIN], 'Question Bank', <AdminQuestions />, '/admin/tests'],
     ['/teacher', [TEACHER], 'Dashboard', <TeacherDashboard />],
