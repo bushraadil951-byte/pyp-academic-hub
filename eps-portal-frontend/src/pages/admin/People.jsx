@@ -1,5 +1,7 @@
 // Shared add/edit/delete screen for students and teachers (they were two near-identical Flask templates).
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { downloadCsv } from '../../csv.js';
 import { api } from '../../api.js';
 import { useFlash } from '../../flash.jsx';
 import { useFetch } from '../../components/useFetch.js';
@@ -37,6 +39,12 @@ export default function People({ kind, grades, singular }) {
         <div><div className="sec-title">{isStudent ? 'Students' : 'Teachers'}</div><div className="sec-sub">{rows.length} shown</div></div>
         <div style={{ display: 'flex', gap: 8 }}>
           <input className="form-input" style={{ width: 200 }} placeholder="Search name or grade…" value={filter} onChange={(e) => setFilter(e.target.value)} />
+          {isStudent && (
+            <>
+              <Link to="/admin/students/upload" className="btn btn-secondary">Bulk upload</Link>
+              <button className="btn btn-secondary" onClick={() => downloadCsv('student_credentials.csv', [['Name', 'Grade', 'Section', 'Username'], ...rows.map((p) => [p.name, p.grade, p.section, p.username])])}>Download list</button>
+            </>
+          )}
           <button className="btn btn-primary" onClick={() => setForm({ grade: grades[0], section: 'A' })}>+ Add {singular}</button>
         </div>
       </div>
