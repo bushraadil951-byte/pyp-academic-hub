@@ -5,7 +5,7 @@ import { ROLES, ROLE_LABELS } from '../constants.js';
 const NAV = {
   [ROLES.ADMIN]: [
     ['Main', [['/portal', '🏠', 'Home']]],
-    ['Manage', [['/admin/students', '👨‍🎓', 'Students'], ['/admin/teachers', '👩‍🏫', 'Teachers'], ['/admin/tests', '📝', 'IBT Mock Tests'], ['/analytics', '📈', 'IBT Analytics']]],
+    ['Manage', [['/admin/students', '👨‍🎓', 'Students'], ['/admin/teachers', '👩‍🏫', 'Teachers'], ['/analytics', '📈', 'IBT Analytics']]],
     ['Assessments', [['/marks/DT', '📊', 'Diagnostic Tests (DT)'], ['/marks/FA', '📋', 'Formative (FA)'], ['/marks/SA', '🧾', 'Summative (SA)']]],
     ['Student Development', [['/ib', '🌱', 'IB Profile'], ['/isp', '📖', 'ISP Profile'], ['/aptitude', '🎯', 'Aptitude']]],
   ],
