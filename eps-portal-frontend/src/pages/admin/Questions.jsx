@@ -41,6 +41,11 @@ export default function AdminQuestions() {
       setForm(null); setEditing(null); reload();
     } catch (err) { flash(err.message, 'error'); }
   };
+  const recalculate = async () => {
+    if (!window.confirm('Recalculate every student result for this test using the current answers?')) return;
+    try { const r = await api.post(`/admin/tests/${testId}/recalculate`); flash(`Results recalculated (${r.updated}).`); }
+    catch (err) { flash(err.message, 'error'); }
+  };
   const remove = async (q) => {
     if (!window.confirm('Delete this question?')) return;
     try { await api.del(`/admin/tests/${testId}/questions/${q.id}`); flash('Question deleted.'); reload(); }
@@ -79,6 +84,8 @@ export default function AdminQuestions() {
       <div className="card">
         <div className="sec-header">
           <div><div className="sec-title">{test.name}</div><div className="sec-sub">{test.subject} · {test.grade} · {questions.length} questions</div></div>
+          <button type="button" className="btn btn-secondary btn-sm" title="Re-score every submission against the current answer key"
+            onClick={recalculate}>↻ Recalculate results</button>
         </div>
         {questions.length === 0 ? <Empty>No questions yet. Use the form to add the first one.</Empty> : questions.map((q, n) => (
           <div key={q.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--surface2)' }}>
