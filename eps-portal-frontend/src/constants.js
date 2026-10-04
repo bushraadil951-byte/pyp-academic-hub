@@ -16,7 +16,7 @@ export const ROLE_LABELS = { Resource_Manager: 'Administrator', teacher: 'Teache
 // Portal tiles per role. `to` is a React route; modules not yet ported point to /soon/:key.
 export const PORTAL_MODULES = {
   Resource_Manager: [
-    { key: 'ibt', name: 'IBT — Mock Tests', icon: '📝', desc: 'Create tests, manage question banks, and review scores and section-wise performance.', to: '/admin' },
+    { key: 'ibt', name: 'IBT — Mock Tests', icon: '📝', desc: 'Create tests, manage question banks, and review scores and section-wise performance.', to: '/admin/tests' },
     { key: 'dt', name: 'DT — Diagnostic Tests', icon: '📊', desc: 'Enter diagnostic marks, view grade analytics and per-student progress across all DTs.', to: '/marks/DT' },
     { key: 'isp', name: 'ISP Profile Development', icon: '📖', desc: 'Track Islamic Studies Programme character attributes for each student.', to: '/isp' },
     { key: 'assessments', name: 'FA & SA — Formative & Summative', icon: '📋', desc: 'Enter formative and summative marks.', to: '/marks' },
