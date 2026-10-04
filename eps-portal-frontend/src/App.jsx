@@ -55,7 +55,7 @@ export default function App() {
     ['/admin/teachers', [ADMIN], 'Teachers', <AdminTeachers />, '/admin'],
     ['/admin/students/upload', [ADMIN], 'Upload Students', <StudentUpload />, '/admin/students'],
     ['/analytics', [ADMIN, TEACHER], 'IBT Analytics', <IbtAnalytics />, '/portal'],
-    ['/admin/tests', [ADMIN], 'IBT Mock Tests', <AdminTests />, '/admin'],
+    ['/admin/tests', [ADMIN], 'IBT Mock Tests', <AdminTests />, '/portal'],
     ['/admin/tests/:testId/questions', [ADMIN], 'Question Bank', <AdminQuestions />, '/admin/tests'],
     ['/teacher', [TEACHER], 'Dashboard', <TeacherDashboard />],
     ['/teacher/students', [TEACHER], 'Students', <TeacherStudents />, '/teacher'],
