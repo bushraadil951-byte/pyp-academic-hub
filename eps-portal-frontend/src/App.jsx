@@ -4,7 +4,6 @@ import { ROLES } from './constants.js';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
 import PortalHome from './pages/PortalHome.jsx';
-import ComingSoon from './pages/ComingSoon.jsx';
 import AdminDashboard from './pages/admin/Dashboard.jsx';
 import AdminStudents from './pages/admin/Students.jsx';
 import AdminTeachers from './pages/admin/Teachers.jsx';
@@ -49,7 +48,6 @@ export default function App() {
   const { ADMIN, TEACHER, STUDENT } = ROLES;
   const routes = [
     ['/portal', [ADMIN, TEACHER, STUDENT], 'Academic Hub', <PortalHome />],
-    ['/soon/:key', [ADMIN, TEACHER, STUDENT], 'Coming soon', <ComingSoon />, '/portal'],
     ['/admin', [ADMIN], 'Dashboard', <AdminDashboard />],
     ['/admin/students', [ADMIN], 'Students', <AdminStudents />, '/admin'],
     ['/admin/teachers', [ADMIN], 'Teachers', <AdminTeachers />, '/admin'],
