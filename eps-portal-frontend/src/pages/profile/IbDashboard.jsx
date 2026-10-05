@@ -27,34 +27,62 @@ export default function IbDashboard() {
         <Stat icon="🌱" bg="#ecfdf5" value={d.totalLp} label="Learner Profile ratings" />
         <Stat icon="🧭" bg="#fffbeb" value={d.totalAtl} label="ATL ratings" />
       </div>
-      <div className="grid-2" style={{ marginBottom: 16, gridTemplateColumns: 'minmax(280px,1fr) 2fr' }}>
-        <div className="card">
-          <div className="card-title">Class average by attribute (teacher ratings, 1–4)</div>
-          {cfg.learnerProfile.map((a) => (
-            <div key={a.attribute} style={{ marginBottom: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem' }}><span>{a.emoji} {a.attribute}</span><strong>{d.lpAvgs[a.attribute] || '—'}</strong></div>
-              <ScoreBar value={d.lpAvgs[a.attribute]} />
-            </div>))}
+{/* Learner Profile - Class Averages Cards */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <span>🌱</span> Learner Profile — Class Averages (All UOIs)
         </div>
-        <div className="card">
-          <div className="card-title">Students</div>
-          {d.students.length === 0 ? <Empty>No students match.</Empty> : (
-            <div className="table-wrap"><table>
-              <thead><tr><th>Student</th><th>Grade</th><th>Sec</th><th>LP</th><th>ATL</th><th /></tr></thead>
-              <tbody>{d.students.map((s) => (
-                <tr key={s.id}>
-                  <td style={{ fontWeight: 500 }}>{s.name}</td><td>{s.grade}</td><td>{s.section || '—'}</td><td>{s.lpCount}</td><td>{s.atlCount}</td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <Link className="btn btn-secondary btn-xs" to={`/ib/learner-profile?studentId=${s.id}`}>Rate LP</Link>{' '}
-                    <Link className="btn btn-secondary btn-xs" to={`/ib/atl?studentId=${s.id}`}>Rate ATL</Link>{' '}
-                    <Link className="btn btn-primary btn-xs" to={`/ib/report/${s.id}`}>Report</Link>
-                  </td>
-                </tr>))}
-              </tbody>
-            </table></div>
-          )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
+          {cfg.learnerProfile.map((a) => {
+            const avg = d.lpAvgs[a.attribute];
+            return (
+              <div
+                key={a.attribute}
+                style={{
+                  border: '1px solid var(--border, #e2e8f0)',
+                  borderRadius: 12,
+                  padding: '14px 16px',
+                  background: '#fff',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6
+                }}
+              >
+                <div style={{ fontSize: '1.25rem' }}>{a.emoji}</div>
+                <div style={{ fontWeight: 600, fontSize: '.9rem', color: '#1e293b' }}>{a.attribute}</div>
+                <div style={{ fontSize: '1.35rem', fontWeight: 700, color: avg ? '#d97706' : '#94a3b8' }}>
+                  {avg ? avg : '—'}{' '}
+                  <span style={{ fontSize: '.85rem', fontWeight: 400, color: '#94a3b8' }}>/ 4</span>
+                </div>
+                <div style={{ fontSize: '.75rem', color: '#94a3b8' }}>
+                  {avg ? (avg >= 3 ? 'Proficient' : avg >= 2 ? 'Developing' : 'Emerging') : 'No data'}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
+
+      {/* Students List Table */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-title">Students</div>
+        {d.students.length === 0 ? <Empty>No students match.</Empty> : (
+          <div className="table-wrap"><table>
+            <thead><tr><th>Student</th><th>Grade</th><th>Sec</th><th>LP</th><th>ATL</th><th /></tr></thead>
+            <tbody>{d.students.map((s) => (
+              <tr key={s.id}>
+                <td style={{ fontWeight: 500 }}>{s.name}</td><td>{s.grade}</td><td>{s.section || '—'}</td><td>{s.lpCount}</td><td>{s.atlCount}</td>
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <Link className="btn btn-secondary btn-xs" to={`/ib/learner-profile?studentId=${s.id}`}>Rate LP</Link>{' '}
+                  <Link className="btn btn-secondary btn-xs" to={`/ib/atl?studentId=${s.id}`}>Rate ATL</Link>{' '}
+                  <Link className="btn btn-primary btn-xs" to={`/ib/report/${s.id}`}>Report</Link>
+                </td>
+              </tr>))}
+            </tbody>
+          </table></div>
+        )}
+      </div>
+
     </>
   );
 }
