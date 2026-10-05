@@ -27,41 +27,107 @@ export default function IbDashboard() {
         <Stat icon="🌱" bg="#ecfdf5" value={d.totalLp} label="Learner Profile ratings" />
         <Stat icon="🧭" bg="#fffbeb" value={d.totalAtl} label="ATL ratings" />
       </div>
-{/* Learner Profile - Class Averages Cards */}
+{/* Learner Profile - Modern Colorful Hover Zoom Cards */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <span>🌱</span> Learner Profile — Class Averages (All UOIs)
+          <span style={{ fontSize: '1.2rem' }}>🌱</span> Learner Profile — Class Averages (All UOIs)
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
-          {cfg.learnerProfile.map((a) => {
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(175px, 1fr))', gap: 14 }}>
+          {cfg.learnerProfile.map((a, idx) => {
             const avg = d.lpAvgs[a.attribute];
+
+            // Modern color palette for each card
+            const palette = [
+              { border: '#3b82f6', bg: '#eff6ff', iconBg: '#dbeafe', badge: '#1d4ed8' }, // Blue
+              { border: '#10b981', bg: '#ecfdf5', iconBg: '#d1fae5', badge: '#047857' }, // Emerald
+              { border: '#f59e0b', bg: '#fffbeb', iconBg: '#fef3c7', badge: '#b45309' }, // Amber
+              { border: '#8b5cf6', bg: '#f5f3ff', iconBg: '#ede9fe', badge: '#6d28d9' }, // Violet
+              { border: '#ec4899', bg: '#fdf2f8', iconBg: '#fce7f3', badge: '#be185d' }, // Pink
+              { border: '#06b6d4', bg: '#ecfeff', iconBg: '#cffafe', badge: '#0e7490' }, // Cyan
+              { border: '#f97316', bg: '#fff7ed', iconBg: '#ffedd5', badge: '#c2410c' }, // Orange
+              { border: '#6366f1', bg: '#eef2ff', iconBg: '#e0e7ff', badge: '#4338ca' }, // Indigo
+              { border: '#14b8a6', bg: '#f0fdfa', iconBg: '#ccfbf1', badge: '#0f766e' }, // Teal
+              { border: '#84cc16', bg: '#f7fee7', iconBg: '#ecfccb', badge: '#4d7c0f' }, // Lime
+            ];
+            const theme = palette[idx % palette.length];
+
             return (
               <div
                 key={a.attribute}
                 style={{
-                  border: '1px solid var(--border, #e2e8f0)',
-                  borderRadius: 12,
-                  padding: '14px 16px',
-                  background: '#fff',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: 14,
+                  padding: '16px 14px',
+                  background: '#ffffff',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 6
+                  gap: 8,
+                  cursor: 'pointer',
+                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.04) translateY(-3px)';
+                  e.currentTarget.style.borderColor = theme.border;
+                  e.currentTarget.style.boxShadow = `0 10px 20px -5px ${theme.border}33`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1) translateY(0)';
+                  e.currentTarget.style.borderColor = '#e2e8f0';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.04)';
                 }}
               >
-                <div style={{ fontSize: '1.25rem' }}>{a.emoji}</div>
-                <div style={{ fontWeight: 600, fontSize: '.9rem', color: '#1e293b' }}>{a.attribute}</div>
-                <div style={{ fontSize: '1.35rem', fontWeight: 700, color: avg ? '#d97706' : '#94a3b8' }}>
-                  {avg ? avg : '—'}{' '}
-                  <span style={{ fontSize: '.85rem', fontWeight: 400, color: '#94a3b8' }}>/ 4</span>
+                {/* Colorful Emoji Icon Badge */}
+                <div
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 10,
+                    background: theme.iconBg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.25rem',
+                    transition: 'transform 0.2s ease',
+                  }}
+                >
+                  {a.emoji}
                 </div>
-                <div style={{ fontSize: '.75rem', color: '#94a3b8' }}>
-                  {avg ? (avg >= 3 ? 'Proficient' : avg >= 2 ? 'Developing' : 'Emerging') : 'No data'}
+
+                {/* Attribute Title */}
+                <div style={{ fontWeight: 600, fontSize: '.9rem', color: '#1e293b' }}>
+                  {a.attribute}
+                </div>
+
+                {/* Score */}
+                <div style={{ fontSize: '1.35rem', fontWeight: 700, color: avg ? theme.badge : '#94a3b8' }}>
+                  {avg ? avg : '—'}{' '}
+                  <span style={{ fontSize: '.8rem', fontWeight: 400, color: '#94a3b8' }}>/ 4</span>
+                </div>
+
+                {/* Status Badge */}
+                <div>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      fontSize: '.72rem',
+                      fontWeight: 600,
+                      padding: '2px 8px',
+                      borderRadius: 20,
+                      background: avg ? theme.bg : '#f1f5f9',
+                      color: avg ? theme.badge : '#64748b',
+                      border: `1px solid ${avg ? theme.border + '33' : '#e2e8f0'}`,
+                    }}
+                  >
+                    {avg ? (avg >= 3 ? 'Proficient' : avg >= 2 ? 'Developing' : 'Emerging') : 'No data'}
+                  </span>
                 </div>
               </div>
             );
           })}
         </div>
       </div>
+
 
       {/* Students List Table */}
       <div className="card" style={{ marginBottom: 16 }}>
