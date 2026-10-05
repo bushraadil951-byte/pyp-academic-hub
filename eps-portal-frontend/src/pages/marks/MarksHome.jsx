@@ -14,7 +14,7 @@ export default function MarksHome() {
       <KindTabs kind={kind} isAdmin={cfg.isAdmin} />
       <div className="sec-header"><div><div className="sec-title">{d.label}</div><div className="sec-sub">Academic year {d.academicYear}{cfg.gradeLocked ? ` · ${cfg.grades[0]}` : ''}</div></div>
         <Link to="/marks" className="btn btn-secondary btn-sm">All assessment types</Link></div>
-      <div className="stat-grid">
+      <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', width: '100%' }}>
         <Stat icon="🗂️" bg="#eef2ff" value={d.totalSheets} label="Mark sheets" />
         <Stat icon="✍️" bg="#ecfdf5" value={d.totalMarks} label="Marks entered" />
         <Stat icon="👨‍🎓" bg="#fffbeb" value={d.totalStudents} label="Students" />
