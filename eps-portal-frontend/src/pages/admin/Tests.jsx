@@ -6,7 +6,8 @@ import { useFetch } from '../../components/useFetch.js';
 import { Loading } from '../../components/ui.jsx';
 import { DIFFICULTIES, GRADES, SUBJECTS } from '../../constants.js';
 
-const BLANK = { name: '', subject: SUBJECTS[0], grade: 'All Grades', difficulty: 'Medium', duration: 40, status: 'draft' };
+const BLANK = { name: '', mockNumber: '', subject: SUBJECTS[0], grade: 'All Grades', difficulty: 'Medium', duration: 40, status: 'draft' };
+const MOCKS = [1, 2, 3, 4, 5];
 const GRADE_OPTIONS = ['All Grades', ...GRADES];
 
 const label = { fontSize: '.8rem', fontWeight: 600, display: 'block', marginBottom: 4 };
@@ -27,13 +28,13 @@ export default function AdminTests() {
   };
   const setC = (k) => (e) => setCreate({ ...create, [k]: e.target.value });
   const setD = (k) => (e) => setDraft({ ...draft, [k]: e.target.value });
-  const body = (f) => ({ ...f, duration: Number(f.duration) });
+  const body = (f) => ({ ...f, duration: Number(f.duration), mockNumber: f.mockNumber === '' || f.mockNumber == null ? null : Number(f.mockNumber) });
 
   const add = async (e) => {
     e.preventDefault();
     if (await run(() => api.post('/admin/tests', body(create)), 'Test created successfully.')) setCreate(BLANK);
   };
-  const startEdit = (t) => { setEditId(t.id); setDraft({ name: t.name, subject: t.subject, grade: t.grade, difficulty: t.difficulty, duration: t.duration, status: t.status }); };
+  const startEdit = (t) => { setEditId(t.id); setDraft({ name: t.name, mockNumber: t.mockNumber ?? '', subject: t.subject, grade: t.grade, difficulty: t.difficulty, duration: t.duration, status: t.status }); };
   const saveEdit = async (e) => {
     e.preventDefault();
     if (await run(() => api.put(`/admin/tests/${editId}`, body(draft)), 'Test updated.')) setEditId(null);
@@ -47,6 +48,10 @@ export default function AdminTests() {
         <form onSubmit={add}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 12, marginBottom: 12 }}>
             <div><label style={label}>Test Title</label><input className="form-input" required placeholder="e.g. IBT English Set 3" value={create.name} onChange={setC('name')} /></div>
+            <div><label style={label}>IBT Mock</label>
+              <select className="form-input" required value={create.mockNumber} onChange={setC('mockNumber')}>
+                <option value="">Select…</option>{MOCKS.map((n) => <option key={n} value={n}>IBT Mock {n}</option>)}
+              </select></div>
             <div><label style={label}>Subject</label><select className="form-input" value={create.subject} onChange={setC('subject')}>{SUBJECTS.map((s) => <option key={s}>{s}</option>)}</select></div>
             <div><label style={label}>Grade</label>
               <select className="form-input" value={create.grade} onChange={setC('grade')}>
@@ -73,6 +78,7 @@ export default function AdminTests() {
                   <span style={{ fontSize: '.75rem', fontWeight: 700, color: t.status === 'active' ? '#16a34a' : '#f59e0b' }}>{t.status}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                  {t.mockNumber ? <span style={chip('#f3e8ff', '#7e22ce')}>IBT Mock {t.mockNumber}</span> : <span style={chip('#f1f5f9', '#64748b')} title="Set it in Edit Settings so this test appears in mock-wise analytics">Mock not set</span>}
                   <span style={chip('#eef2ff', '#4f46e5')}>{t.subject}</span>
                   <span style={chip('#f0fdf4', '#16a34a')}>{t.grade}</span>
                   <span style={chip('#fef9c3', '#a16207')}>{t.difficulty}</span>
@@ -94,6 +100,10 @@ export default function AdminTests() {
                 <div style={{ fontWeight: 700, fontSize: '.9rem', marginBottom: 12, color: '#1d4ed8' }}>⚙ Edit Test Settings</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div><label style={{ ...label, fontSize: '.78rem' }}>Title</label><input className="form-input" required value={draft.name} onChange={setD('name')} /></div>
+                  <div><label style={{ ...label, fontSize: '.78rem' }}>IBT Mock</label>
+                    <select className="form-input" value={draft.mockNumber} onChange={setD('mockNumber')}>
+                      <option value="">Not set</option>{MOCKS.map((n) => <option key={n} value={n}>IBT Mock {n}</option>)}
+                    </select></div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     <div><label style={{ ...label, fontSize: '.78rem' }}>Subject</label><select className="form-input" value={draft.subject} onChange={setD('subject')}>{SUBJECTS.map((s) => <option key={s}>{s}</option>)}</select></div>
                     <div><label style={{ ...label, fontSize: '.78rem' }}>Grade</label><select className="form-input" value={draft.grade} onChange={setD('grade')}>{GRADE_OPTIONS.map((g) => <option key={g}>{g}</option>)}</select></div>
