@@ -164,7 +164,7 @@ export default function MarksUpload() {
 
       <div
         className="card"
-        style={{ maxWidth: 760 }}
+        style={{ width: '100%' }}
       >
         <div className="card-title">
           Upload {kind}{number} marks from CSV
