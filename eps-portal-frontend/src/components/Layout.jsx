@@ -53,7 +53,7 @@ export default function Layout({ title = 'Academic Hub', back }) {
             {back && <Link to={back} className="back-btn">← Back</Link>}
             <div className="topbar-title">{title}</div>
           </div>
-          <div className="topbar-user">{ROLE_LABELS[user.role]} · {user.name}</div>
+          <div className="topbar-user"></div>
         </div>
         <div className="page"><Outlet /></div>
       </main>
