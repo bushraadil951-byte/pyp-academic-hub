@@ -23,7 +23,7 @@ export default function MarksUpload() {
   if (!cfg) return <Loading />;
   if (!kc) return <div className="alert alert-error">Unknown assessment type.</div>;
   const g = cfg.gradeLocked ? cfg.grades[0] : grade || cfg.grades[0];
-  // one column per strand for strand subjects (e.g. "english - reading and writing"), one per subject otherwise ("science")
+  // one column per strand for strand subjects (e.g. "english - reading"), one per subject otherwise ("science")
   const detected = parsed ? kc.columns.filter((c) => parsed.keys.includes(c.key)) : [];
 
   const onFile = async (e) => {
@@ -67,7 +67,7 @@ export default function MarksUpload() {
           <Field label={`${kind} number`}><select className="form-input" value={number} onChange={(e) => setNumber(Number(e.target.value))}>{kc.numbers.map((n) => <option key={n} value={n}>{kind}{n}</option>)}</select></Field>
         </div>
         <p className="sec-sub" style={{ margin: '4px 0 12px' }}>
-          One row per student: <code>username</code> then one column per subject. English, Hindi, Urdu and Maths (in FA and SA) have one column per strand, for example <code>english - reading and writing</code>. Click <strong>Download template</strong> to get every header. Leave a cell empty to skip it. Only students in the chosen grade{section ? ' and section' : ''} are matched.
+          One row per student: <code>username</code> then one column per subject. English, Hindi, Urdu and Maths (in FA and SA) have one column per strand, for example <code>english - reading</code>. Click <strong>Download template</strong> to get every header. Leave a cell empty to skip it. Only students in the chosen grade{section ? ' and section' : ''} are matched.
         </p>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14 }}>
           <button type="button" className="btn btn-secondary btn-sm" onClick={template}>Download template</button>
