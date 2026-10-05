@@ -87,7 +87,7 @@ router.use('/teachers', peopleRoutes(ROLES.TEACHER));
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 const testJson = (t) => ({
-  id: t.id, name: t.name, subject: t.subject, grade: t.grade, difficulty: t.difficulty,
+  id: t.id, name: t.name, subject: t.subject, grade: t.grade, mockNumber: t.mockNumber ?? null, difficulty: t.difficulty,
   duration: t.duration, status: t.status, questionCount: t.questions.length,
 });
 
@@ -98,7 +98,12 @@ function testFields(b) {
   if (![...GRADES, 'All Grades'].includes(b.grade)) throw bad('Choose a valid grade.');
   const duration = Number(b.duration);
   if (!Number.isFinite(duration) || duration < 1) throw bad('Duration must be at least 1 minute.');
-  return { name, subject: b.subject, grade: b.grade, difficulty: str(b.difficulty) || 'Medium', duration, status: b.status === 'active' ? 'active' : 'draft' };
+  let mockNumber = null;                         // IBT Mock 1-5; empty = not numbered
+  if (b.mockNumber !== undefined && b.mockNumber !== null && b.mockNumber !== '') {
+    mockNumber = Number(b.mockNumber);
+    if (!Number.isInteger(mockNumber) || mockNumber < 1 || mockNumber > 5) throw bad('Choose IBT Mock 1 to 5.');
+  }
+  return { name, subject: b.subject, grade: b.grade, mockNumber, difficulty: str(b.difficulty) || 'Medium', duration, status: b.status === 'active' ? 'active' : 'draft' };
 }
 
 router.get('/tests', wrap(async (_req, res) => {
