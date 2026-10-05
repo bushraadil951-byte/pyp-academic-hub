@@ -67,7 +67,10 @@ export default function AdminTests() {
       </div>
 
       {/* Test cards */}
-      <div style={{ marginBottom: 8, fontSize: '.85rem', color: 'var(--ink3)' }}>{data.length} total</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div style={{ fontSize: '.85rem', color: 'var(--ink3)' }}>{data.length} total</div>
+        <Link to="/admin/import-results" className="btn btn-secondary btn-sm">📤 Import Results</Link>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(320px,1fr))', gap: 16 }}>
         {data.map((t) => (
           <div className="card" style={{ padding: 18 }} key={t.id}>
@@ -86,6 +89,7 @@ export default function AdminTests() {
                 <div style={{ fontSize: '.82rem', color: 'var(--ink3)', marginBottom: 14 }}>📝 {t.questionCount} questions &nbsp;|&nbsp; ⏱ {t.duration} min</div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <Link to={`/admin/tests/${t.id}/questions`} className="btn btn-secondary btn-sm">✏ Questions</Link>
+                  <Link to={`/admin/import-results?testId=${t.id}`} className="btn btn-secondary btn-sm">📤 Import Results</Link>
                   <button onClick={() => startEdit(t)} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '5px 10px', borderRadius: 5, cursor: 'pointer', fontSize: '.8rem' }}>⚙ Edit Settings</button>
                   <button onClick={() => run(() => api.post(`/admin/tests/${t.id}/toggle`))}
                     style={{ background: t.status === 'active' ? '#fef3c7' : '#dcfce7', color: t.status === 'active' ? '#92400e' : '#166534', border: 'none', padding: '5px 10px', borderRadius: 5, cursor: 'pointer', fontSize: '.8rem' }}>
