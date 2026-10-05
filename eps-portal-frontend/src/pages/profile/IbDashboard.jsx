@@ -22,7 +22,7 @@ export default function IbDashboard() {
             <select className="form-input" value={section} onChange={(e) => setSection(e.target.value)}><option value="">All sections</option>{cfg.sections.map((s) => <option key={s}>{s}</option>)}</select></div>
         </div>
       </div>
-      <div className="stat-grid">
+      <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', width: '100%' }}>
         <Stat icon="👨‍🎓" bg="#eef2ff" value={d.students.length} label="Students" />
         <Stat icon="🌱" bg="#ecfdf5" value={d.totalLp} label="Learner Profile ratings" />
         <Stat icon="🧭" bg="#fffbeb" value={d.totalAtl} label="ATL ratings" />
