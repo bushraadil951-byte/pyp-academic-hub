@@ -313,7 +313,7 @@ router.get('/aptitude', staff, wrap(async (req, res) => {
   if (!MARK_GRADES.includes(grade)) throw bad('Choose a valid grade.');
   const section = str(req.query.section) || null;
   const students = await User.find({ role: ROLES.STUDENT, grade, ...(section ? { section } : {}) }).sort({ name: 1 }).lean();
-  const sheets = await MarkSheet.find({ academicYear: ACADEMIC_YEAR, grade }).select('kind subject maxMarks marks.student marks.marks').lean();
+  const sheets = await MarkSheet.find({ academicYear: ACADEMIC_YEAR, grade }).select('kind number subject strand section grade academicYear maxMarks marks.student marks.marks').lean();
   const apt = computeAptitude({ sheets, studentIds: students.map((s) => String(s._id)) });
   const strands = Object.keys(APTITUDE_STRANDS);
   res.json({
@@ -325,7 +325,7 @@ router.get('/aptitude', staff, wrap(async (req, res) => {
 
 router.get('/student/aptitude', student, wrap(async (req, res) => {
   const me = await User.findById(req.user.id);
-  const sheets = await MarkSheet.find({ academicYear: ACADEMIC_YEAR, grade: me.grade, 'marks.student': me._id }).select('kind subject maxMarks marks.student marks.marks').lean();
+  const sheets = await MarkSheet.find({ academicYear: ACADEMIC_YEAR, grade: me.grade, 'marks.student': me._id }).select('kind number subject strand section grade academicYear maxMarks marks.student marks.marks').lean();
   const apt = computeAptitude({ sheets, studentIds: [String(me._id)] })[String(me._id)];
   res.json({ student: person(me), academicYear: ACADEMIC_YEAR, strands: Object.keys(APTITUDE_STRANDS), aptitude: apt, weights: APTITUDE_STRANDS });
 }));
