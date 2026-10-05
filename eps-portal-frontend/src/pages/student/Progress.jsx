@@ -13,6 +13,7 @@ export default function StudentProgress() {
   if (error) return <div className="alert alert-error">{error.message}</div>;
   const started = d.insights.some((i) => i.completed > 0);
   const weak = d.insights.filter((i) => i.average !== null && i.average < 80).map((i) => i.subject);
+  const weakStrands = Object.entries(d.strands || {}).flatMap(([sub, list]) => list.filter((x) => x.average !== null && x.average < 60).map((x) => `${sub}: ${x.strand}`));
   return (
     <>
       <div className="sec-header"><div><div className="sec-title">My {d.label}</div><div className="sec-sub">{d.student.grade}{d.student.section ? ` · ${d.student.section}` : ''} · {d.academicYear}</div></div></div>
@@ -23,6 +24,7 @@ export default function StudentProgress() {
               Focus areas: <strong>{weak.join(', ')}</strong>. <Link to="/student">Practise with a mock test →</Link>
             </div>
           )}
+          {weakStrands.length > 0 && <div className="alert alert-error" style={{ marginBottom: 16 }}>Strands to work on (below 60%): <strong>{weakStrands.join(' · ')}</strong></div>}
           <div className="grid-2">
             {d.insights.map((ins) => {
               const points = d.series[ins.subject].map((p) => ({ name: `${kind}${p.number}`, me: p.pct, cls: p.classAvgPct }));
@@ -41,6 +43,17 @@ export default function StudentProgress() {
                       <Line type="monotone" dataKey="cls" name="Class avg" stroke="#94a3b8" strokeDasharray="4 3" connectNulls />
                     </LineChart>
                   </ResponsiveContainer>
+                  {d.strands?.[ins.subject]?.some((x) => x.completed > 0) && (
+                    <div style={{ marginTop: 12 }}>
+                      <div className="sec-sub" style={{ fontWeight: 600, marginBottom: 6 }}>By strand</div>
+                      {d.strands[ins.subject].map((x) => (
+                        <div key={x.strand} style={{ marginBottom: 8 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.8rem' }}>
+                            <span>{x.strand}</span><span><Pct v={x.average} /> <Badge tone={TONE[x.status]}>{x.status}</Badge></span>
+                          </div>
+                          <div className="progress" style={{ height: 6 }}><div className="progress-fill" style={{ width: `${x.average || 0}%`, background: x.average === null ? 'transparent' : x.average >= 80 ? 'var(--green)' : x.average >= 60 ? 'var(--amber)' : 'var(--red)' }} /></div>
+                        </div>))}
+                    </div>)}
                 </div>
               );
             })}
