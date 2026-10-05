@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api } from '../../api.js';
@@ -6,6 +6,53 @@ import { useFlash } from '../../flash.jsx';
 import { useFetch } from '../../components/useFetch.js';
 import { Empty, Field, Loading } from '../../components/ui.jsx';
 import { KindTabs, PALETTE, Pct, useKind } from './shared.jsx';
+
+// FA and SA are assessed strand by strand: this panel shows where a class or a student is weak inside a subject.
+function StrandPanel({ d, kind }) {
+  const subjects = Object.keys(d.strandAnalytics.subjects);
+  const hasData = (sub) => d.strandAnalytics.subjects[sub].some((x) => x.overall !== null);
+  const [picked, setPicked] = useState('');
+  const subject = picked || subjects.find(hasData) || subjects[0];
+  const strands = d.strandAnalytics.subjects[subject];
+  const cell = (v) => (
+    <td style={v !== null && v < 60 ? { background: '#fef2f2' } : undefined}>{v === null ? <span style={{ color: 'var(--ink3)' }}>—</span> : <Pct v={v} />}</td>
+  );
+  const weakest = (sid) => {
+    const vals = strands.map((x) => [x.strand, d.strandAnalytics.students[sid]?.[subject]?.[x.strand] ?? null]).filter(([, v]) => v !== null);
+    return vals.length >= 2 ? vals.reduce((a, b) => (b[1] < a[1] ? b : a)) : null;
+  };
+  const classWeakest = strands.filter((x) => x.overall !== null).sort((a, b) => a.overall - b.overall)[0];
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="sec-header"><div><div className="sec-title">Strand-wise performance</div>
+        <div className="sec-sub">{classWeakest ? <>Weakest strand in {subject}: <strong>{classWeakest.strand}</strong> ({classWeakest.overall}%). Red cells are below 60%.</> : `No ${kind} strand marks entered for ${subject} yet.`}</div></div></div>
+      <div className="tab-bar" style={{ flexWrap: 'wrap' }}>
+        {subjects.map((sub) => <button key={sub} type="button" className={`tab-btn ${sub === subject ? 'active' : ''}`} onClick={() => setPicked(sub)}>{sub}</button>)}
+      </div>
+      <div className="grid-2" style={{ gridTemplateColumns: 'minmax(260px,1fr) 2fr', alignItems: 'start' }}>
+        <div>
+          {strands.map((x) => (
+            <div key={x.strand} style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.82rem' }}><span style={{ fontWeight: 600 }}>{x.strand}</span>{x.overall === null ? <span style={{ color: 'var(--ink3)' }}>—</span> : <Pct v={x.overall} />}</div>
+              <div className="progress" style={{ height: 7 }}><div className="progress-fill" style={{ width: `${x.overall || 0}%`, background: x.overall === null ? 'transparent' : x.overall >= 80 ? 'var(--green)' : x.overall >= 60 ? 'var(--amber)' : 'var(--red)' }} /></div>
+              <div className="sec-sub" style={{ marginTop: 3 }}>{d.numbers.map((n, i) => `${kind}${n}: ${x.perNumber[i] === null ? '—' : `${x.perNumber[i]}%`}`).join('  ·  ')}</div>
+            </div>))}
+        </div>
+        <div className="table-wrap"><table>
+          <thead><tr><th>Student</th><th>Sec</th>{strands.map((x) => <th key={x.strand}>{x.strand}</th>)}<th>Weakest strand</th></tr></thead>
+          <tbody>{d.students.map((st) => {
+            const w = weakest(st.id);
+            return (
+              <tr key={st.id}><td style={{ fontWeight: 500 }}>{st.name}</td><td>{st.section || '—'}</td>
+                {strands.map((x) => <Fragment key={x.strand}>{cell(d.strandAnalytics.students[st.id]?.[subject]?.[x.strand] ?? null)}</Fragment>)}
+                <td>{w ? <span style={{ fontWeight: 600 }}>{w[0]} <span style={{ color: 'var(--ink3)', fontWeight: 400 }}>({w[1]}%)</span></span> : <span style={{ color: 'var(--ink3)' }}>—</span>}</td></tr>);
+          })}</tbody>
+        </table></div>
+      </div>
+    </div>
+  );
+}
 
 export default function MarksAnalytics() {
   const flash = useFlash();
@@ -56,6 +103,7 @@ export default function MarksAnalytics() {
               </LineChart>
             </ResponsiveContainer>
           </div>
+          {Object.keys(d.strandAnalytics?.subjects || {}).length > 0 && <StrandPanel key={`${grade}-${section}`} d={d} kind={kind} />}
           <div className="card">
             <div className="card-title">Student ranking · {d.students.length} students</div>
             <div className="table-wrap"><table>
