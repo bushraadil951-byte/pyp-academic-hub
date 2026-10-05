@@ -26,7 +26,7 @@ export const MARK_SECTIONS = ['A', 'B', 'C', 'D'];
 
 // FA and SA are assessed strand by strand. A subject that is NOT listed here (Science, and all of DT) keeps one mark per student.
 // To change the strands, edit the lists below: the entry screen, CSV upload, analytics and student reports all follow this.
-const LANGUAGE_STRANDS = ['Viewing and Presenting', 'Listening and Speaking', 'Reading and Writing'];
+const LANGUAGE_STRANDS = ['Viewing and Presenting', 'Listening and Speaking', 'Reading', 'Writing'];
 const ASSESSMENT_STRANDS = {
   English: LANGUAGE_STRANDS,
   Hindi: LANGUAGE_STRANDS,
@@ -43,7 +43,7 @@ export const MARK_KINDS = {
 };
 
 // The entry columns of one assessment type: one per strand for strand subjects, one per subject otherwise.
-// `key` is the lower-case CSV header, e.g. "english - reading and writing" or "science".
+// `key` is the lower-case CSV header, e.g. "english - reading" or "science".
 export function columnsFor(kindCfg) {
   return kindCfg.subjects.flatMap((subject) => {
     const strands = kindCfg.strands?.[subject];
