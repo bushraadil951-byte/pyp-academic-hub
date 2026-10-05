@@ -2,6 +2,7 @@
 // so a whole class costs one database query instead of dozens per student.
 import { APTITUDE_STRANDS } from './profileData.js';
 import { safeAvg } from './math.js';
+import { collapseStrands } from './marksMath.js';
 
 const pct = (m, max) => (max > 0 ? Math.round((m / max) * 1000) / 10 : null);
 
@@ -14,13 +15,14 @@ export function computeAptitude({ sheets, studentIds }) {
   const strandsBySubject = {};
   for (const [strand, cfg] of Object.entries(APTITUDE_STRANDS)) for (const s of cfg.subjects) (strandsBySubject[s] ??= []).push(strand);
 
-  for (const sh of sheets) {
+  // FA/SA strand sheets are merged into one subject-level mark first (needs kind, number, subject, section, strand, maxMarks, marks)
+  for (const sh of collapseStrands(sheets)) {
     const strands = strandsBySubject[sh.subject];
     if (!strands) continue;
     for (const m of sh.marks) {
       const sid = String(m.student);
       if (!ids.has(sid)) continue;
-      const p = pct(m.marks, sh.maxMarks);
+      const p = pct(m.marks, m.max ?? sh.maxMarks);
       if (p === null) continue;
       for (const strand of strands) ((collected[sid] ??= {})[strand] ??= { FA: [], DT: [], SA: [] })[sh.kind].push(p);
     }
