@@ -2,6 +2,32 @@
 // Same calculations as build_dt_analytics / dt_student_series / dt_student_insights in app.py.
 import { round1, safeAvg } from './math.js';
 
+// Strand sheets (one per strand) -> one subject-level sheet per assessment, so every existing calculation keeps working.
+// Each student's mark becomes (sum of their strand marks) out of (sum of the maxima of the strands they were marked on).
+// Sheets without a strand (Science, DT, older data) pass through unchanged.
+export function collapseStrands(sheets) {
+  const out = []; const groups = new Map();
+  for (const sh of sheets) {
+    if (!sh.strand) { out.push(sh); continue; }
+    const key = [sh.kind, sh.number, sh.subject, sh.grade, sh.section || '', sh.academicYear].join('|');
+    let g = groups.get(key);
+    if (!g) {
+      g = { kind: sh.kind, number: sh.number, subject: sh.subject, grade: sh.grade, section: sh.section || null, academicYear: sh.academicYear, testDate: sh.testDate || null, strand: null, maxMarks: 0, byStudent: new Map() };
+      groups.set(key, g); out.push(g);
+    }
+    g.maxMarks += sh.maxMarks;
+    for (const m of sh.marks) {
+      const sid = String(m.student);
+      const cur = g.byStudent.get(sid) || { student: m.student, marks: 0, max: 0 };
+      cur.marks += m.marks; cur.max += sh.maxMarks;
+      g.byStudent.set(sid, cur);
+    }
+  }
+  for (const g of groups.values()) { g.marks = [...g.byStudent.values()]; delete g.byStudent; }
+  return out;
+}
+
+
 const pctOf = (m, max) => (max > 0 ? round1((m / max) * 100) : null);
 const vals = (xs) => xs.filter((x) => x !== null && x !== undefined);
 
@@ -12,7 +38,7 @@ export function computeGradeAnalytics({ students, sheets, subjects, numbers }) {
   for (const sh of sheets) {
     for (const m of sh.marks) {
       const sid = String(m.student);
-      const p = ids.has(sid) ? pctOf(m.marks, sh.maxMarks) : null;
+      const p = ids.has(sid) ? pctOf(m.marks, m.max ?? sh.maxMarks) : null;
       if (p !== null) lookup.set(`${sid}|${sh.subject}|${sh.number}`, p);
     }
   }
@@ -51,7 +77,7 @@ export function computeCrossGrade({ grades, studentCounts, sheets, subjects }) {
     const all = [];
     for (const subject of subjects) {
       const p = [];
-      for (const sh of sheets) if (sh.grade === grade && sh.subject === subject) for (const m of sh.marks) { const x = pctOf(m.marks, sh.maxMarks); if (x !== null) p.push(x); }
+      for (const sh of sheets) if (sh.grade === grade && sh.subject === subject) for (const m of sh.marks) { const x = pctOf(m.marks, m.max ?? sh.maxMarks); if (x !== null) p.push(x); }
       subjectAvgs[subject] = p.length ? safeAvg(p) : null;
       all.push(...p);
     }
@@ -68,11 +94,11 @@ export function computeStudentSeries({ sheets, studentId, studentSection, subjec
       const candidates = sheets.filter((sh) => sh.subject === subject && sh.number === number && (!sh.section || sh.section === studentSection));
       const sh = candidates.find((c) => c.section) || candidates[0]; // section-specific sheet wins
       if (!sh) return { number, marks: null, max: null, pct: null, classAvgPct: null, date: null };
-      const classPct = vals(sh.marks.map((m) => pctOf(m.marks, sh.maxMarks)));
+      const classPct = vals(sh.marks.map((m) => pctOf(m.marks, m.max ?? sh.maxMarks)));
       const mine = sh.marks.find((m) => String(m.student) === sid);
       return {
-        number, marks: mine ? mine.marks : null, max: sh.maxMarks,
-        pct: mine ? pctOf(mine.marks, sh.maxMarks) : null,
+        number, marks: mine ? mine.marks : null, max: mine ? (mine.max ?? sh.maxMarks) : sh.maxMarks,
+        pct: mine ? pctOf(mine.marks, mine.max ?? sh.maxMarks) : null,
         classAvgPct: classPct.length ? safeAvg(classPct) : null,
         date: sh.testDate || null,
       };
