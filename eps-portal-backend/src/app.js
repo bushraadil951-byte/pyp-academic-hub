@@ -14,6 +14,7 @@ import marksRoutes from './routes/marks.js';
 import profileRoutes from './routes/profile.js';
 import adminUploadRoutes from './routes/adminUpload.js';
 import analyticsRoutes from './routes/analytics.js';
+import importResultsRoutes from './routes/importResults.js';
 
 export function createApp() {
   const app = express();
@@ -38,6 +39,7 @@ export function createApp() {
   app.get('/health', (_req, res) => res.send('OK')); // same health check URL Render already uses
   app.use('/api/auth', authRoutes);
   app.use('/api/admin/student-upload', adminUploadRoutes);
+  app.use('/api/admin/import-results', importResultsRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/teacher', teacherRoutes);
   app.use('/api/student', studentRoutes);
