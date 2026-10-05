@@ -15,6 +15,7 @@ const mockTestSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, maxlength: 200 },
   subject: { type: String, required: true },
   grade: { type: String, required: true },              // 'Grade 3' | 'Grade 4' | 'Grade 5' | 'All Grades'
+  mockNumber: { type: Number, min: 1, max: 5, default: null },   // 'IBT Mock 1' ... 'IBT Mock 5' (null = not numbered yet)
   difficulty: { type: String, default: 'Medium' },
   duration: { type: Number, default: 40, min: 1 },
   status: { type: String, enum: ['draft', 'active'], default: 'draft' },
