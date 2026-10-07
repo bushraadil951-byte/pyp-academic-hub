@@ -53,9 +53,9 @@ export function AptitudeStaff() {
                       <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.25} />
                     </radialGradient>
                   </defs>
-                  <PolarGrid stroke="#cbd5e1" strokeDasharray="4 4" />
+                  <PolarGrid stroke="#64748b" strokeWidth={1.5} strokeDasharray="3 3" />
+                  <PolarRadiusAxis domain={[0, 100]} angle={30} tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }} stroke="#94a3b8" strokeWidth={1.5} />
                   <PolarAngleAxis dataKey="strand" tick={{ fill: '#334155', fontSize: 12, fontWeight: 600 }} />
-                  <PolarRadiusAxis domain={[0, 100]} angle={30} tick={{ fill: '#94a3b8', fontSize: 10 }} stroke="#e2e8f0" />
                   <Tooltip
                     content={({ active: act, payload }) => {
                       if (!act || !payload || !payload.length) return null;
