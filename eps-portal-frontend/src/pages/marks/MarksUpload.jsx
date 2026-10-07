@@ -59,7 +59,7 @@ export default function MarksUpload() {
   return (
     <>
       <KindTabs kind={kind} isAdmin={cfg.isAdmin} />
-      <div className="card" style={{ maxWidth: 760 }}>
+      <div className="card" style={{ width: '100%' }}>
         <div className="card-title">Upload {kind}{number} marks from CSV</div>
         <div className="form-row-3" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
           <Field label="Grade"><select className="form-input" value={g} disabled={cfg.gradeLocked} onChange={(e) => setGrade(e.target.value)}>{cfg.grades.map((x) => <option key={x}>{x}</option>)}</select></Field>
