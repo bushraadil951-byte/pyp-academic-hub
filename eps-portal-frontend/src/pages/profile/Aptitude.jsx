@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from 'recharts';
+import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { useFetch } from '../../components/useFetch.js';
 import { Empty, Loading } from '../../components/ui.jsx';
 
@@ -40,13 +40,47 @@ export function AptitudeStaff() {
 
       {d.students.length === 0 ? <div className="card"><Empty>No students in {d.grade}{section ? ` section ${section}` : ''}.</Empty></div> : (
         <>
-          {sel && (
-            <div className="card" style={{ marginBottom: 16 }}>
-              <div className="card-title">{sel.name} · aptitude profile</div>
-              <ResponsiveContainer width="100%" height={300}>
-                <RadarChart data={d.strands.map((s) => ({ strand: s, score: sel.aptitude[s].score ?? 0 }))} outerRadius="70%">
-                  <PolarGrid /><PolarAngleAxis dataKey="strand" tick={{ fontSize: 11 }} /><PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
-                  <Radar dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.35} />
+{sel && (
+            <div className="card" style={{ marginBottom: 16, borderRadius: 16, background: '#ffffff', boxShadow: '0 4px 20px -2px rgba(99, 102, 241, 0.08)' }}>
+              <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1.05rem', fontWeight: 700, color: '#1e293b' }}>
+                <span style={{ fontSize: '1.3rem' }}>🎯</span> {sel.name} · Aptitude Profile
+              </div>
+              <ResponsiveContainer width="100%" height={340}>
+                <RadarChart data={d.strands.map((s) => ({ strand: s, score: sel.aptitude[s].score ?? 0 }))} outerRadius="72%">
+                  <defs>
+                    <radialGradient id="staffRadarGrad" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stopColor="#818cf8" stopOpacity={0.7} />
+                      <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.25} />
+                    </radialGradient>
+                  </defs>
+                  <PolarGrid stroke="#cbd5e1" strokeDasharray="4 4" />
+                  <PolarAngleAxis dataKey="strand" tick={{ fill: '#334155', fontSize: 12, fontWeight: 600 }} />
+                  <PolarRadiusAxis domain={[0, 100]} angle={30} tick={{ fill: '#94a3b8', fontSize: 10 }} stroke="#e2e8f0" />
+                  <Tooltip
+                    content={({ active: act, payload }) => {
+                      if (!act || !payload || !payload.length) return null;
+                      const val = payload[0].value;
+                      const b = band(val);
+                      return (
+                        <div style={{ background: '#0f172a', color: '#fff', padding: '8px 14px', borderRadius: 10, fontSize: '.8rem', boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}>
+                          <div style={{ fontWeight: 600, marginBottom: 2 }}>{payload[0].payload.strand}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: '1rem', fontWeight: 700, color: '#818cf8' }}>{val}%</span>
+                            <span style={{ background: b.bg, color: b.color, padding: '1px 6px', borderRadius: 4, fontSize: '.7rem', fontWeight: 600 }}>{b.label}</span>
+                          </div>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Radar
+                    name="Score"
+                    dataKey="score"
+                    stroke="#4f46e5"
+                    strokeWidth={2.5}
+                    fill="url(#staffRadarGrad)"
+                    dot={{ r: 4, fill: '#4f46e5', stroke: '#ffffff', strokeWidth: 2 }}
+                    activeDot={{ r: 7, fill: '#6366f1', stroke: '#ffffff', strokeWidth: 3 }}
+                  />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
@@ -95,11 +129,46 @@ export function AptitudeStudent() {
       <div className="sec-header"><div><div className="sec-title">My aptitude profile</div><div className="sec-sub">{d.student.grade} · {d.academicYear}. Built from your FA, DT and SA marks.</div></div></div>
       {!any ? <div className="card"><Empty>No marks have been recorded for you yet, so there are no aptitude scores.</Empty></div> : (
         <>
-          <div className="card" style={{ marginBottom: 16 }}>
-            <ResponsiveContainer width="100%" height={300}>
-              <RadarChart data={d.strands.map((s) => ({ strand: s, score: d.aptitude[s].score ?? 0 }))} outerRadius="70%">
-                <PolarGrid /><PolarAngleAxis dataKey="strand" tick={{ fontSize: 11 }} /><PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
-                <Radar dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.35} />
+<div className="card" style={{ marginBottom: 16, borderRadius: 16, background: '#ffffff', boxShadow: '0 4px 20px -2px rgba(16, 185, 129, 0.08)' }}>
+            <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1.05rem', fontWeight: 700, color: '#1e293b' }}>
+              <span style={{ fontSize: '1.3rem' }}>🌟</span> Aptitude Overview
+            </div>
+            <ResponsiveContainer width="100%" height={340}>
+              <RadarChart data={d.strands.map((s) => ({ strand: s, score: d.aptitude[s].score ?? 0 }))} outerRadius="72%">
+                <defs>
+                  <radialGradient id="studentRadarGrad" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#34d399" stopOpacity={0.7} />
+                    <stop offset="100%" stopColor="#059669" stopOpacity={0.25} />
+                  </radialGradient>
+                </defs>
+                <PolarGrid stroke="#cbd5e1" strokeDasharray="4 4" />
+                <PolarAngleAxis dataKey="strand" tick={{ fill: '#334155', fontSize: 12, fontWeight: 600 }} />
+                <PolarRadiusAxis domain={[0, 100]} angle={30} tick={{ fill: '#94a3b8', fontSize: 10 }} stroke="#e2e8f0" />
+                <Tooltip
+                  content={({ active: act, payload }) => {
+                    if (!act || !payload || !payload.length) return null;
+                    const val = payload[0].value;
+                    const b = band(val);
+                    return (
+                      <div style={{ background: '#0f172a', color: '#fff', padding: '8px 14px', borderRadius: 10, fontSize: '.8rem', boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}>
+                        <div style={{ fontWeight: 600, marginBottom: 2 }}>{payload[0].payload.strand}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: '1rem', fontWeight: 700, color: '#34d399' }}>{val}%</span>
+                          <span style={{ background: b.bg, color: b.color, padding: '1px 6px', borderRadius: 4, fontSize: '.7rem', fontWeight: 600 }}>{b.label}</span>
+                        </div>
+                      </div>
+                    );
+                  }}
+                />
+                <Radar
+                  name="Score"
+                  dataKey="score"
+                  stroke="#059669"
+                  strokeWidth={2.5}
+                  fill="url(#studentRadarGrad)"
+                  dot={{ r: 4, fill: '#059669', stroke: '#ffffff', strokeWidth: 2 }}
+                  activeDot={{ r: 7, fill: '#10b981', stroke: '#ffffff', strokeWidth: 3 }}
+                />
               </RadarChart>
             </ResponsiveContainer>
           </div>
