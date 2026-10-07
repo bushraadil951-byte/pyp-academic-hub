@@ -179,34 +179,197 @@ router.put('/:kind/entry', staff, wrap(async (req, res) => {
   res.json({ saved: savedStudents.size, removed, invalid });
 }));
 
-// ── CSV bulk upload: one row per student, one column per subject (or per strand for strand subjects) ──
+// ── CSV bulk upload: one row per student, one column per subject
+// (or per strand for strand subjects) ────────────────────────────────
 router.put('/:kind/bulk', staff, wrap(async (req, res) => {
   const locked = await lockedGrade(req);
-  const base = slot(req, { ...req.body, grade: locked || req.body.grade, subject: req.cfg.subjects[0] });
-  const rows = Array.isArray(req.body.rows) ? req.body.rows.slice(0, 1000) : [];
-  const byUsername = new Map((await studentsOf(base.grade, base.section)).map((u) => [u.username, String(u._id)]));
-  const columns = columnsFor(req.cfg);
-  const inFile = [...new Set(rows.flatMap((r) => Object.keys(r.marks || {})))]
-    .map((k) => columns.find((c) => c.key === k.trim().toLowerCase())).filter(Boolean);
-  if (!inFile.length) throw bad(`No mark columns recognised. Expected headers like: username,${columns.slice(0, 3).map((c) => c.key).join(',')}`);
 
-  let saved = 0, skipped = 0; const unknownUsers = new Set();
+  const base = slot(req, {
+    ...req.body,
+    grade: locked || req.body.grade,
+    subject: req.cfg.subjects[0],
+  });
+
+  const rows = Array.isArray(req.body.rows)
+    ? req.body.rows.slice(0, 1000)
+    : [];
+
+  const byUsername = new Map(
+    (
+      await studentsOf(
+        base.grade,
+        base.section
+      )
+    ).map((u) => [
+      u.username,
+      String(u._id)
+    ])
+  );
+
+  const columns = columnsFor(req.cfg);
+
+  const inFile = [
+    ...new Set(
+      rows.flatMap((r) =>
+        Object.keys(r.marks || {})
+      )
+    ),
+  ]
+    .map((k) =>
+      columns.find(
+        (c) =>
+          c.key ===
+          k.trim().toLowerCase()
+      )
+    )
+    .filter(Boolean);
+
+  if (!inFile.length) {
+    throw bad(
+      `No mark columns recognised. Expected headers like: username,${columns
+        .slice(0, 3)
+        .map((c) => c.key)
+        .join(',')}`
+    );
+  }
+
+  // ------------------------------------------------------------
+  // Validate maximum marks BEFORE saving anything.
+  // Teacher must explicitly enter a maximum mark.
+  // Maximum marks may be whole numbers or .5 increments.
+  // ------------------------------------------------------------
+
+  const maxMarksByColumn = {};
+
   for (const col of inFile) {
-    const max = Number(req.body.maxMarks?.[col.key] ?? 25) || 25;
-    const sheet = await getOrCreateSheet({ ...base, subject: col.subject, strand: col.strand }, req.user.id);
-    sheet.maxMarks = max;
-    for (const row of rows) {
-      const id = byUsername.get(str(row.username));
-      if (!id) { if (str(row.username)) unknownUsers.add(str(row.username)); continue; }
-      const raw = Object.entries(row.marks || {}).find(([k]) => k.trim().toLowerCase() === col.key)?.[1];
-      const v = parseValue(raw, max);
-      if (v.blank) continue;
-      if (v.invalid) { skipped += 1; continue; }
-      applyMark(sheet, id, v.value, '', req.user.id); saved += 1;
+    const rawMax =
+      req.body.maxMarks?.[col.key];
+
+    if (
+      rawMax === undefined ||
+      rawMax === null ||
+      String(rawMax).trim() === ''
+    ) {
+      throw bad(
+        `Maximum marks for "${col.label}" must be entered.`
+      );
     }
+
+    const max = Number(rawMax);
+
+    if (
+      !Number.isFinite(max) ||
+      max <= 0
+    ) {
+      throw bad(
+        `Maximum marks for "${col.label}" must be greater than 0.`
+      );
+    }
+
+    // Allow only 0.5 increments:
+    // 10, 10.5, 11, 11.5, 12, etc.
+    if (!Number.isInteger(max * 2)) {
+      throw bad(
+        `Maximum marks for "${col.label}" must be in 0.5 increments.`
+      );
+    }
+
+    maxMarksByColumn[col.key] = max;
+  }
+
+  let saved = 0;
+  let skipped = 0;
+
+  const unknownUsers = new Set();
+
+  // ------------------------------------------------------------
+  // Import marks
+  // ------------------------------------------------------------
+
+  for (const col of inFile) {
+    const max =
+      maxMarksByColumn[col.key];
+
+    const sheet =
+      await getOrCreateSheet(
+        {
+          ...base,
+          subject: col.subject,
+          strand: col.strand,
+        },
+        req.user.id
+      );
+
+    sheet.maxMarks = max;
+
+    for (const row of rows) {
+      const username =
+        str(row.username);
+
+      const id =
+        byUsername.get(username);
+
+      if (!id) {
+        if (username) {
+          unknownUsers.add(username);
+        }
+
+        continue;
+      }
+
+      const raw =
+        Object.entries(
+          row.marks || {}
+        ).find(
+          ([k]) =>
+            k.trim().toLowerCase() ===
+            col.key
+        )?.[1];
+
+      const v =
+        parseValue(
+          raw,
+          max
+        );
+
+      // Empty CSV cell = skip
+      if (v.blank) {
+        continue;
+      }
+
+      // Invalid or above maximum = skip
+      if (v.invalid) {
+        skipped += 1;
+        continue;
+      }
+
+      // IMPORTANT:
+      // v.value is stored exactly as a number.
+      // 17.5 remains 17.5.
+      applyMark(
+        sheet,
+        id,
+        v.value,
+        '',
+        req.user.id
+      );
+
+      saved += 1;
+    }
+
     await sheet.save();
   }
-  res.json({ saved, skipped, subjects: inFile.map((c) => c.label), unknownUsers: [...unknownUsers] });
+
+  res.json({
+    saved,
+    skipped,
+    subjects: inFile.map(
+      (c) => c.label
+    ),
+    unknownUsers: [
+      ...unknownUsers,
+    ],
+  });
 }));
 
 // ── Analytics ───────────────────────────────────────────────────────────────
