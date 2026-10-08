@@ -64,6 +64,7 @@ export default function Layout({ title = 'Academic Hub', back }) {
             <div className="sidebar-user">{user.name}</div>
             <div className="sidebar-role">{ROLE_LABELS[user.role] || user.role}</div>
           </div>
+          <Link to="/change-password" className="nav-link" style={{ padding: '6px 0', fontSize: '.78rem' }}>🔒 Change password</Link>
           <button className="btn-signout" onClick={logout} title="Sign out" aria-label="Sign out">
             <LogOut size={17} strokeWidth={1.75} />
           </button>
