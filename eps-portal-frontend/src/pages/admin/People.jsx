@@ -1,4 +1,3 @@
-// Shared add/edit/delete screen for students and teachers.
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { downloadCsv } from '../../csv.js';
@@ -8,11 +7,12 @@ import { useFetch } from '../../components/useFetch.js';
 import { Badge, Empty, Field, Loading, Modal } from '../../components/ui.jsx';
 import ResetPasswordButton from '../../components/ResetPasswordButton.jsx';
 
+// Shared add/edit/delete screen for students and teachers.
 export default function People({ kind, grades, singular }) {
   const flash = useFlash();
   const { data, loading, reload } = useFetch(`/admin/${kind}`);
 
-  const [form, setForm] = useState(null); // null = closed; object = add/edit
+  const [form, setForm] = useState(null);
   const [search, setSearch] = useState('');
   const [gradeF, setGradeF] = useState('');
   const [sectionF, setSectionF] = useState('');
@@ -34,7 +34,7 @@ export default function People({ kind, grades, singular }) {
         (p.username || '').toLowerCase().includes(q))
   );
 
-  // Section choices: A-D plus any other section already present in the data.
+  // Section choices: A-D plus any other section already present.
   const sectionOptions = [
     ...new Set([
       'A',
@@ -54,6 +54,29 @@ export default function People({ kind, grades, singular }) {
     }));
   };
 
+  // Open the Add form.
+  const openAddForm = () => {
+    if (isStudent) {
+      setForm({
+        grade: grades[0] || '',
+        section: 'A',
+        email: '',
+        password: '',
+      });
+    } else {
+      // New teachers start with NO access point selected.
+      setForm({
+        grade: '',
+        editSection: '',
+        viewGrade: '',
+        viewSection: '',
+        email: '',
+        password: '',
+      });
+    }
+  };
+
+  // Save person.
   const save = async (e) => {
     e.preventDefault();
 
@@ -77,6 +100,7 @@ export default function People({ kind, grades, singular }) {
     }
   };
 
+  // Delete person.
   const remove = async (person) => {
     if (
       !window.confirm(
@@ -88,6 +112,7 @@ export default function People({ kind, grades, singular }) {
 
     try {
       await api.del(`/admin/${kind}/${person.id}`);
+
       flash(`${singular} removed.`);
       reload();
     } catch (err) {
@@ -95,38 +120,11 @@ export default function People({ kind, grades, singular }) {
     }
   };
 
-  // New person defaults.
-  //
-  // Students:
-  // - First available grade
-  // - Section A
-  //
-  // Teachers:
-  // - Viewing: All grades / All sections
-  // - Editing: All grades / All sections
-  const openAddForm = () => {
-    if (isStudent) {
-      setForm({
-        grade: grades[0] || '',
-        section: 'A',
-        email: '',
-        password: '',
-      });
-    } else {
-      setForm({
-        grade: '',
-        editSection: '',
-        viewGrade: '',
-        viewSection: '',
-        email: '',
-        password: '',
-      });
-    }
-  };
-
   return (
     <>
-      {/* Header */}
+      {/* =========================
+          HEADER
+      ========================== */}
       <div className="sec-header">
         <div>
           <div className="sec-title">
@@ -141,10 +139,15 @@ export default function People({ kind, grades, singular }) {
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <Link to="/admin/emails" className="btn btn-secondary">
+          {/* Email import */}
+          <Link
+            to="/admin/emails"
+            className="btn btn-secondary"
+          >
             Import emails
           </Link>
 
+          {/* Student-only actions */}
           {isStudent && (
             <>
               <Link
@@ -158,7 +161,12 @@ export default function People({ kind, grades, singular }) {
                 className="btn btn-secondary"
                 onClick={() =>
                   downloadCsv('student_credentials.csv', [
-                    ['Name', 'Grade', 'Section', 'Username'],
+                    [
+                      'Name',
+                      'Grade',
+                      'Section',
+                      'Username',
+                    ],
                     ...rows.map((p) => [
                       p.name,
                       p.grade,
@@ -173,6 +181,7 @@ export default function People({ kind, grades, singular }) {
             </>
           )}
 
+          {/* Add */}
           <button
             className="btn btn-primary"
             onClick={openAddForm}
@@ -182,8 +191,13 @@ export default function People({ kind, grades, singular }) {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="card" style={{ marginBottom: 12 }}>
+      {/* =========================
+          FILTERS
+      ========================== */}
+      <div
+        className="card"
+        style={{ marginBottom: 12 }}
+      >
         <div
           style={{
             display: 'flex',
@@ -192,8 +206,17 @@ export default function People({ kind, grades, singular }) {
             alignItems: 'flex-end',
           }}
         >
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <label className="form-label" htmlFor="flt-search">
+          {/* Search */}
+          <div
+            style={{
+              flex: 1,
+              minWidth: 200,
+            }}
+          >
+            <label
+              className="form-label"
+              htmlFor="flt-search"
+            >
               Search
             </label>
 
@@ -202,32 +225,50 @@ export default function People({ kind, grades, singular }) {
               className="form-input"
               placeholder="Name or username…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) =>
+                setSearch(e.target.value)
+              }
             />
           </div>
 
+          {/* Grade filter */}
           <div style={{ minWidth: 150 }}>
-            <label className="form-label" htmlFor="flt-grade">
-              {isStudent ? 'Grade' : 'Assigned grade'}
+            <label
+              className="form-label"
+              htmlFor="flt-grade"
+            >
+              {isStudent
+                ? 'Grade'
+                : 'Assigned grade'}
             </label>
 
             <select
               id="flt-grade"
               className="form-input"
               value={gradeF}
-              onChange={(e) => setGradeF(e.target.value)}
+              onChange={(e) =>
+                setGradeF(e.target.value)
+              }
             >
-              <option value="">All grades</option>
+              <option value="">
+                All grades
+              </option>
 
               {grades.map((g) => (
-                <option key={g}>{g}</option>
+                <option key={g} value={g}>
+                  {g}
+                </option>
               ))}
             </select>
           </div>
 
+          {/* Section filter - students only */}
           {isStudent && (
             <div style={{ minWidth: 150 }}>
-              <label className="form-label" htmlFor="flt-section">
+              <label
+                className="form-label"
+                htmlFor="flt-section"
+              >
                 Section
               </label>
 
@@ -235,17 +276,27 @@ export default function People({ kind, grades, singular }) {
                 id="flt-section"
                 className="form-input"
                 value={sectionF}
-                onChange={(e) => setSectionF(e.target.value)}
+                onChange={(e) =>
+                  setSectionF(e.target.value)
+                }
               >
-                <option value="">All sections</option>
+                <option value="">
+                  All sections
+                </option>
 
                 {sectionOptions.map((section) => (
-                  <option key={section}>{section}</option>
+                  <option
+                    key={section}
+                    value={section}
+                  >
+                    {section}
+                  </option>
                 ))}
               </select>
             </div>
           )}
 
+          {/* Clear filters */}
           {filtering && (
             <button
               className="btn btn-secondary"
@@ -261,7 +312,9 @@ export default function People({ kind, grades, singular }) {
         </div>
       </div>
 
-      {/* People table */}
+      {/* =========================
+          PEOPLE TABLE
+      ========================== */}
       <div className="card">
         {rows.length === 0 ? (
           <Empty>
@@ -277,11 +330,16 @@ export default function People({ kind, grades, singular }) {
                   <th>Name</th>
                   <th>Username</th>
                   <th>Email</th>
+
                   <th>
-                    {isStudent ? 'Grade' : 'Assigned grade'}
+                    {isStudent
+                      ? 'Grade'
+                      : 'Assigned grade'}
                   </th>
 
-                  {isStudent && <th>Section</th>}
+                  {isStudent && (
+                    <th>Section</th>
+                  )}
 
                   <th />
                 </tr>
@@ -290,11 +348,19 @@ export default function People({ kind, grades, singular }) {
               <tbody>
                 {rows.map((p) => (
                   <tr key={p.id}>
-                    <td style={{ fontWeight: 500 }}>
+                    <td
+                      style={{
+                        fontWeight: 500,
+                      }}
+                    >
                       {p.name}
                     </td>
 
-                    <td style={{ color: 'var(--ink3)' }}>
+                    <td
+                      style={{
+                        color: 'var(--ink3)',
+                      }}
+                    >
                       {p.username}
                     </td>
 
@@ -305,7 +371,9 @@ export default function People({ kind, grades, singular }) {
                       }}
                     >
                       {p.email || (
-                        <span title="No email: this person cannot get reset codes">
+                        <span
+                          title="No email: this person cannot get reset codes"
+                        >
                           — none
                         </span>
                       )}
@@ -335,7 +403,9 @@ export default function People({ kind, grades, singular }) {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      <ResetPasswordButton person={p} />{' '}
+                      <ResetPasswordButton
+                        person={p}
+                      />{' '}
 
                       <button
                         className="btn btn-secondary btn-xs"
@@ -351,7 +421,9 @@ export default function People({ kind, grades, singular }) {
 
                       <button
                         className="btn btn-danger btn-xs"
-                        onClick={() => remove(p)}
+                        onClick={() =>
+                          remove(p)
+                        }
                       >
                         Delete
                       </button>
@@ -364,7 +436,9 @@ export default function People({ kind, grades, singular }) {
         )}
       </div>
 
-      {/* Add / Edit modal */}
+      {/* =========================
+          ADD / EDIT MODAL
+      ========================== */}
       {form && (
         <Modal
           title={
@@ -375,7 +449,7 @@ export default function People({ kind, grades, singular }) {
           onClose={() => setForm(null)}
         >
           <form onSubmit={save}>
-            {/* Name */}
+            {/* Full name */}
             <Field label="Full name">
               <input
                 className="form-input"
@@ -396,7 +470,9 @@ export default function People({ kind, grades, singular }) {
               />
             </Field>
 
-            {/* Student settings */}
+            {/* =========================
+                STUDENT FIELDS
+            ========================== */}
             {isStudent ? (
               <div className="form-row">
                 <Field label="Grade">
@@ -407,7 +483,12 @@ export default function People({ kind, grades, singular }) {
                     onChange={set('grade')}
                   >
                     {grades.map((g) => (
-                      <option key={g}>{g}</option>
+                      <option
+                        key={g}
+                        value={g}
+                      >
+                        {g}
+                      </option>
                     ))}
                   </select>
                 </Field>
@@ -422,7 +503,9 @@ export default function People({ kind, grades, singular }) {
                 </Field>
               </div>
             ) : (
-              /* Teacher access settings */
+              /* =========================
+                  TEACHER ACCESS POINT
+              ========================== */
               <div
                 style={{
                   marginTop: 6,
@@ -440,8 +523,14 @@ export default function People({ kind, grades, singular }) {
                   Access Point
                 </div>
 
-                {/* VIEWING */}
-                <div style={{ marginBottom: 16 }}>
+                {/* =====================
+                    VIEWING
+                ====================== */}
+                <div
+                  style={{
+                    marginBottom: 16,
+                  }}
+                >
                   <div
                     style={{
                       fontSize: '.8rem',
@@ -461,13 +550,14 @@ export default function People({ kind, grades, singular }) {
                       gap: 10,
                     }}
                   >
+                    {/* Viewing grade */}
                     <select
                       className="form-input"
                       value={form.viewGrade || ''}
                       onChange={set('viewGrade')}
                     >
                       <option value="">
-                        All grades
+                        Select grade
                       </option>
 
                       {grades.map((g) => (
@@ -480,30 +570,40 @@ export default function People({ kind, grades, singular }) {
                       ))}
                     </select>
 
+                    {/* Viewing section */}
                     <select
                       className="form-input"
-                      value={form.viewSection || ''}
-                      onChange={set('viewSection')}
+                      value={
+                        form.viewSection || ''
+                      }
+                      onChange={set(
+                        'viewSection'
+                      )}
                     >
                       <option value="">
-                        All sections
+                        Select section
                       </option>
 
-                      {['A', 'B', 'C', 'D'].map(
-                        (section) => (
-                          <option
-                            key={section}
-                            value={section}
-                          >
-                            {section}
-                          </option>
-                        )
-                      )}
+                      {[
+                        'A',
+                        'B',
+                        'C',
+                        'D',
+                      ].map((section) => (
+                        <option
+                          key={section}
+                          value={section}
+                        >
+                          {section}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
 
-                {/* EDITING */}
+                {/* =====================
+                    EDITING
+                ====================== */}
                 <div>
                   <div
                     style={{
@@ -524,13 +624,14 @@ export default function People({ kind, grades, singular }) {
                       gap: 10,
                     }}
                   >
+                    {/* Editing grade */}
                     <select
                       className="form-input"
                       value={form.grade || ''}
                       onChange={set('grade')}
                     >
                       <option value="">
-                        All grades
+                        Select grade
                       </option>
 
                       {grades.map((g) => (
@@ -543,32 +644,42 @@ export default function People({ kind, grades, singular }) {
                       ))}
                     </select>
 
+                    {/* Editing section */}
                     <select
                       className="form-input"
-                      value={form.editSection || ''}
-                      onChange={set('editSection')}
+                      value={
+                        form.editSection || ''
+                      }
+                      onChange={set(
+                        'editSection'
+                      )}
                     >
                       <option value="">
-                        All sections
+                        Select section
                       </option>
 
-                      {['A', 'B', 'C', 'D'].map(
-                        (section) => (
-                          <option
-                            key={section}
-                            value={section}
-                          >
-                            {section}
-                          </option>
-                        )
-                      )}
+                      {[
+                        'A',
+                        'B',
+                        'C',
+                        'D',
+                      ].map((section) => (
+                        <option
+                          key={section}
+                          value={section}
+                        >
+                          {section}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Email */}
+            {/* =========================
+                EMAIL
+            ========================== */}
             <Field
               label={
                 isStudent
@@ -585,7 +696,9 @@ export default function People({ kind, grades, singular }) {
               />
             </Field>
 
-            {/* Password */}
+            {/* =========================
+                PASSWORD
+            ========================== */}
             <Field
               label={
                 form.id
@@ -602,7 +715,9 @@ export default function People({ kind, grades, singular }) {
               />
             </Field>
 
-            {/* Buttons */}
+            {/* =========================
+                FORM BUTTONS
+            ========================== */}
             <div
               style={{
                 display: 'flex',
