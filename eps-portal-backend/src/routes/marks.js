@@ -43,8 +43,9 @@ const checkEditPerm = async (req, grade, section) => {
   }
 };
 router.param('kind', (req, _res, next, raw) => {
-  const rawStr = String(raw || '');
-  const matchKey = Object.keys(MARK_KINDS).find((k) => k.toLowerCase() === rawStr.toLowerCase());
+  const rawStr = String(raw || '').trim().toUpperCase();
+  if (rawStr === 'CONFIG' || rawStr === 'HUB') return next();
+  const matchKey = Object.keys(MARK_KINDS).find((k) => k.toUpperCase() === rawStr);
   if (!matchKey || !MARK_KINDS[matchKey]) return next(notFound());
   req.kind = matchKey;
   req.cfg = MARK_KINDS[matchKey];
@@ -139,10 +140,12 @@ router.get('/:kind/dashboard', staff, wrap(async (req, res) => {
 // ── Entry (one subject + number + grade/section) ────────────────────────────
 // Strand subjects (FA/SA English, Hindi, Urdu, Maths) are entered strand by strand: each strand has its own
 // maximum marks and its own column. Other subjects (Science, all of DT) keep one mark per student.
-router.put('/:kind/entry', staff, wrap(async (req, res) => {
+router.get('/:kind/entry', staff, wrap(async (req, res) => {
   const locked = await lockedGrade(req);
-  const s = slot(req, { ...req.body, grade: locked || req.body.grade });
-  await checkEditPerm(req, s.grade, s.section);
+  const defaultGrade = locked || req.query.grade || MARK_GRADES[0];
+  const defaultSub = req.query.subject || req.cfg?.subjects?.[0] || 'English';
+  const defaultNum = Number(req.query.number || req.cfg?.numbers?.[0] || 1);
+  const s = slot(req, { ...req.query, grade: defaultGrade, subject: defaultSub, number: defaultNum });
   const strands = strandsOf(req, s.subject);
   const [students, sheets] = await Promise.all([studentsOf(s.grade, s.section), findSheets(s, strands)]);
   const slotOut = { grade: s.grade, section: s.section || '', subject: s.subject, number: s.number };
@@ -169,10 +172,10 @@ router.put('/:kind/entry', staff, wrap(async (req, res) => {
   const testDate = strands.map((st) => strandSheets[st]?.testDate).find(Boolean) || null;
   res.json({ slot: slotOut, strands, students: students.map(asStudent), strandSheets, testDate, marks });
 }));
-
 router.put('/:kind/entry', staff, wrap(async (req, res) => {
   const locked = await lockedGrade(req);
   const s = slot(req, { ...req.body, grade: locked || req.body.grade });
+  await checkEditPerm(req, s.grade, s.section);
   const strands = strandsOf(req, s.subject);
   const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
   const roster = new Map((await studentsOf(s.grade, s.section)).map((u) => [String(u._id), u.name]));
