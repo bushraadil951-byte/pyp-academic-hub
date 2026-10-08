@@ -5,7 +5,7 @@ const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);       // { id, name, role, grade }
+  const [user, setUser] = useState(null);       // { id, name, role, grade, email, mustChange }
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,5 +22,5 @@ export function AuthProvider({ children }) {
     try { await api.post('/auth/logout'); } finally { setUser(null); }
   }, []);
 
-  return <AuthCtx.Provider value={{ user, loading, login, logout }}>{children}</AuthCtx.Provider>;
+  return <AuthCtx.Provider value={{ user, setUser, loading, login, logout }}>{children}</AuthCtx.Provider>;
 }
