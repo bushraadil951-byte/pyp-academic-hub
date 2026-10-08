@@ -9,22 +9,40 @@ import { safeAvg, wrap } from '../utils/helpers.js';
 const router = Router();
 router.use(requireAuth(ROLES.TEACHER));
 
-// A teacher is locked to their assigned grade (current_teacher_grade() in app.py).
-const teacherGrade = async (req) => (await User.findById(req.user.id).select('grade'))?.grade || null;
+// Fetch teacher's viewing and editing access points
+const teacherAccess = async (req) => {
+  const user = await User.findById(req.user.id).select('grade section viewGrade viewSection editSection');
+  return {
+    viewGrade: user?.viewGrade || null,
+    viewSection: user?.viewSection || null,
+    editGrade: user?.grade || null,
+    editSection: user?.editSection || null,
+  };
+};
 
 router.get('/dashboard', wrap(async (req, res) => {
-  const grade = await teacherGrade(req);
-  if (!grade) return res.json({ grade: null, studentCount: 0, activeTests: 0, avgScore: 0, submitted: 0, recent: [] });
+  const access = await teacherAccess(req);
 
-  const students = await User.find({ role: ROLES.STUDENT, grade }).select('name');
+  // Student filter based on Viewing Access
+  const studentQuery = { role: ROLES.STUDENT };
+  if (access.viewGrade) studentQuery.grade = access.viewGrade;
+  if (access.viewSection) studentQuery.section = access.viewSection;
+
+  const students = await User.find(studentQuery).select('name grade section');
   const ids = students.map((s) => s._id);
+
+  const testGradeFilter = access.viewGrade ? [access.viewGrade, 'All Grades'] : { $exists: true };
+
   const [results, activeTests] = await Promise.all([
     TestResult.find({ student: { $in: ids } }).sort({ takenAt: -1 }).populate('student', 'name').populate('test', 'name').lean(),
-    MockTest.countDocuments({ status: 'active', grade: { $in: [grade, 'All Grades'] } }),
+    MockTest.countDocuments({ status: 'active', grade: testGradeFilter }),
   ]);
+
   const live = results.filter((r) => r.student && r.test);
   res.json({
-    grade,
+    access,
+    grade: access.viewGrade || 'All grades',
+    section: access.viewSection || 'All sections',
     studentCount: students.length,
     activeTests,
     avgScore: safeAvg(live.map((r) => r.percent)),
@@ -34,14 +52,29 @@ router.get('/dashboard', wrap(async (req, res) => {
 }));
 
 router.get('/students', wrap(async (req, res) => {
-  const grade = await teacherGrade(req);
-  const students = await User.find({ role: ROLES.STUDENT, ...(grade ? { grade } : {}) }).sort({ grade: 1, name: 1 });
+  const access = await teacherAccess(req);
+
+  // Apply viewing filter for teacher
+  const studentQuery = { role: ROLES.STUDENT };
+  if (access.viewGrade) studentQuery.grade = access.viewGrade;
+  if (access.viewSection) studentQuery.section = access.viewSection;
+
+  const students = await User.find(studentQuery).sort({ grade: 1, section: 1, name: 1 });
   const results = await TestResult.find({ student: { $in: students.map((s) => s._id) } }).select('student percent').lean();
   const byStudent = new Map();
   for (const r of results) (byStudent.get(String(r.student)) ?? byStudent.set(String(r.student), []).get(String(r.student))).push(r.percent);
+
   res.json(students.map((s) => {
     const p = byStudent.get(s.id) || [];
-    return { id: s.id, name: s.name, grade: s.grade, section: s.section, testsTaken: p.length, avg: safeAvg(p) };
+    return {
+      id: s.id,
+      name: s.name,
+      grade: s.grade,
+      section: s.section,
+      testsTaken: p.length,
+      avg: safeAvg(p),
+      canEdit: (!access.editGrade || access.editGrade === s.grade) && (!access.editSection || access.editSection === s.section)
+    };
   }));
 }));
 
