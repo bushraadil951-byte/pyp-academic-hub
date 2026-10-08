@@ -12,9 +12,30 @@ const router = Router();
 const staff = requireAuth(ROLES.TEACHER, ROLES.ADMIN);
 const adminOnly = requireAuth(ROLES.ADMIN);
 
-// Teachers are locked to their assigned grade (null = unrestricted), as current_teacher_grade() in app.py.
-const lockedGrade = async (req) => (req.user.role === ROLES.TEACHER ? (await User.findById(req.user.id).select('grade'))?.grade || null : null);
+// Teacher access points helper (viewing vs editing)
+const getTeacherAccess = async (req) => {
+  if (req.user.role !== ROLES.TEACHER) return null;
+  const u = await User.findById(req.user.id).select('grade section viewGrade viewSection editSection');
+  return {
+    viewGrade: u?.viewGrade || null,
+    viewSection: u?.viewSection || null,
+    editGrade: u?.grade || null,
+    editSection: u?.editSection || null,
+  };
+};
 
+const lockedGrade = async (req) => (await getTeacherAccess(req))?.viewGrade || null;
+
+const checkEditPerm = async (req, grade, section) => {
+  const acc = await getTeacherAccess(req);
+  if (!acc) return;
+  if (acc.editGrade && grade && acc.editGrade !== grade) {
+    throw bad(`You only have permission to edit marks for ${acc.editGrade}.`);
+  }
+  if (acc.editSection && section && acc.editSection !== section) {
+    throw bad(`You only have permission to edit marks for section ${acc.editSection}.`);
+  }
+};
 router.param('kind', (req, _res, next, raw) => {
   const kind = String(raw).toUpperCase();
   if (!MARK_KINDS[kind]) return next(notFound());
