@@ -16,7 +16,7 @@ export default function StudentUpload() {
   const [busy, setBusy] = useState(false);
 
   const template = () => downloadCsv('students_template.csv', [
-    ['name', 'username', 'password', 'grade', 'section'], ['Ahmed Khan', 'ahmed_01', 'ahm@01', 'Grade 3', 'A'], ['Sara Ali', '', '', 'Grade 4', 'B']]);
+    ['name', 'username', 'password', 'grade', 'section', 'email'], ['Ahmed Khan', 'ahmed_01', 'ahm@01', 'Grade 3', 'A', 'parent@example.com'], ['Sara Ali', '', '', 'Grade 4', 'B', '']]);
 
   const check = async (list) => {
     setBusy(true);
@@ -58,7 +58,7 @@ export default function StudentUpload() {
 
       <div className="card" style={{ marginBottom: 16 }}>
         <p className="sec-sub" style={{ marginBottom: 10 }}>
-          Columns: <code>name, username, password, grade, section</code>. Only <strong>name</strong> and <strong>grade</strong> are required.
+          Columns: <code>name, username, password, grade, section, email</code>. Only <strong>name</strong> and <strong>grade</strong> are required. <strong>email</strong> is the parent or guardian address used for password reset codes. Every student must choose a new password the first time they sign in.
           Empty usernames become <code>firstname_g3</code>; empty passwords become <code>EPS@Ahm3</code>-style defaults (up to 500 students per file).
         </p>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -77,12 +77,13 @@ export default function StudentUpload() {
             </div>
           </div>
           <div className="table-wrap"><table>
-            <thead><tr><th>Name</th><th>Grade</th><th>Sec</th><th>Username</th><th>Password</th><th>Status</th><th /></tr></thead>
+            <thead><tr><th>Name</th><th>Grade</th><th>Sec</th><th>Username</th><th>Password</th><th>Email</th><th>Status</th><th /></tr></thead>
             <tbody>{rows.map((r, i) => (
               <tr key={i}>
                 <td style={{ fontWeight: 500 }}>{r.name}</td><td>{r.grade}</td><td>{r.section}</td>
                 <td><input className="form-input" aria-label={`Username for ${r.name}`} value={r.username} onChange={(e) => edit(i, { username: e.target.value })} /></td>
                 <td><input className="form-input" aria-label={`Password for ${r.name}`} value={r.password} onChange={(e) => edit(i, { password: e.target.value })} /></td>
+                <td><input className="form-input" type="email" aria-label={`Email for ${r.name}`} value={r.email || ''} onChange={(e) => edit(i, { email: e.target.value })} /></td>
                 <td><Badge tone={TONE[r.status]}>{LABEL[r.status]}</Badge>{r.message && <div className="sec-sub">{r.message}</div>}</td>
                 <td><button className="btn btn-danger btn-xs" onClick={() => setRows(rows.filter((_, j) => j !== i))} aria-label={`Remove ${r.name}`}>✕</button></td>
               </tr>))}
