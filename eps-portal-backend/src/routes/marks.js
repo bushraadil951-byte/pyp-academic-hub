@@ -131,9 +131,10 @@ router.get('/:kind/dashboard', staff, wrap(async (req, res) => {
 // ── Entry (one subject + number + grade/section) ────────────────────────────
 // Strand subjects (FA/SA English, Hindi, Urdu, Maths) are entered strand by strand: each strand has its own
 // maximum marks and its own column. Other subjects (Science, all of DT) keep one mark per student.
-router.get('/:kind/entry', staff, wrap(async (req, res) => {
+router.put('/:kind/entry', staff, wrap(async (req, res) => {
   const locked = await lockedGrade(req);
-  const s = slot(req, { ...req.query, grade: locked || req.query.grade || MARK_GRADES[0], subject: req.query.subject || req.cfg.subjects[0], number: req.query.number || req.cfg.numbers[0] });
+  const s = slot(req, { ...req.body, grade: locked || req.body.grade });
+  await checkEditPerm(req, s.grade, s.section);
   const strands = strandsOf(req, s.subject);
   const [students, sheets] = await Promise.all([studentsOf(s.grade, s.section), findSheets(s, strands)]);
   const slotOut = { grade: s.grade, section: s.section || '', subject: s.subject, number: s.number };
@@ -210,6 +211,7 @@ router.put('/:kind/bulk', staff, wrap(async (req, res) => {
     grade: locked || req.body.grade,
     subject: req.cfg.subjects[0],
   });
+  await checkEditPerm(req, base.grade, base.section);
 
   const rows = Array.isArray(req.body.rows)
     ? req.body.rows.slice(0, 1000)
