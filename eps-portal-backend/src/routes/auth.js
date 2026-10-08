@@ -6,7 +6,9 @@ import { clearSession, requireAuth, setSession } from '../middleware/auth.js';
 import { HttpError, str, wrap } from '../utils/helpers.js';
 
 const router = Router();
-export const publicUser = (u) => ({ id: u.id, name: u.name, role: u.role, grade: u.grade ?? null });
+export const publicUser = (u) => ({
+  id: u.id, name: u.name, role: u.role, grade: u.grade ?? null, email: u.email ?? null, mustChange: !!u.mustChangePassword,
+});
 
 // 10 attempts per 15 minutes per IP; the old Flask login had no throttle.
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false,
@@ -20,7 +22,7 @@ router.post('/login', loginLimiter, wrap(async (req, res) => {
   if (!user || !check.ok) throw new HttpError(401, 'Invalid username or password.');
   if (check.needsRehash) { user.password = hashPassword(password); await user.save(); } // upgrade migrated Werkzeug hashes
   setSession(res, user);
-  res.json({ user: publicUser(user) });
+  res.json({ user: publicUser(user) });   // user.mustChange === true -> the app sends them to "Set a new password"
 }));
 
 router.get('/me', requireAuth(), wrap(async (req, res) => {
