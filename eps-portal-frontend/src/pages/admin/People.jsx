@@ -110,15 +110,58 @@ export default function People({ kind, grades, singular }) {
             <Field label="Username">
               <input className="form-input" required disabled={!!form.id} value={form.username || ''} onChange={set('username')} />
             </Field>
-            <div className="form-row">
-              <Field label={isStudent ? 'Grade' : 'Assigned grade (optional)'}>
-                <select className="form-input" required={isStudent} value={form.grade || ''} onChange={set('grade')}>
-                  {!isStudent && <option value="">All grades</option>}
-                  {grades.map((g) => <option key={g}>{g}</option>)}
-                </select>
-              </Field>
-              {isStudent && <Field label="Section"><input className="form-input" maxLength={2} value={form.section || ''} onChange={set('section')} /></Field>}
-            </div>
+            {isStudent ? (
+              <div className="form-row">
+                <Field label="Grade">
+                  <select className="form-input" required value={form.grade || ''} onChange={set('grade')}>
+                    {grades.map((g) => <option key={g}>{g}</option>)}
+                  </select>
+                </Field>
+                <Field label="Section">
+                  <input className="form-input" maxLength={2} value={form.section || ''} onChange={set('section')} />
+                </Field>
+              </div>
+            ) : (
+              <div style={{ marginTop: 6, marginBottom: 16 }}>
+                <div style={{ fontWeight: 600, fontSize: '.9rem', color: '#1e293b', marginBottom: 10 }}>
+                  Access Point
+                </div>
+
+                {/* Viewing */}
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: '.8rem', fontWeight: 600, color: '#64748b', marginBottom: 6 }}>
+                    Viewing
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <select className="form-input" value={form.viewGrade || ''} onChange={set('viewGrade')}>
+                      <option value="">All grades</option>
+                      {grades.map((g) => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                    <select className="form-input" value={form.viewSection || ''} onChange={set('viewSection')}>
+                      <option value="">All sections</option>
+                      {['A', 'B', 'C', 'D'].map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Editing */}
+                <div>
+                  <div style={{ fontSize: '.8rem', fontWeight: 600, color: '#64748b', marginBottom: 6 }}>
+                    Editing
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <select className="form-input" value={form.grade || ''} onChange={set('grade')}>
+                      <option value="">All grades</option>
+                      {grades.map((g) => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                    <select className="form-input" value={form.editSection || ''} onChange={set('editSection')}>
+                      <option value="">All sections</option>
+                      {['A', 'B', 'C', 'D'].map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
             <Field label={isStudent ? 'Parent or guardian email (for password reset codes)' : 'Email (for password reset codes)'}>
               <input className="form-input" type="email" placeholder="name@example.com" value={form.email || ''} onChange={set('email')} />
             </Field>
