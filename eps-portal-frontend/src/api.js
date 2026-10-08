@@ -2,7 +2,7 @@
 const BASE = (import.meta.env.VITE_API_URL || '') + '/api';
 
 export class ApiError extends Error {
-  constructor(message, status) { super(message); this.status = status; }
+  constructor(message, status, code) { super(message); this.status = status; this.code = code; }
 }
 
 async function request(method, path, body) {
@@ -14,7 +14,11 @@ async function request(method, path, body) {
   });
   let data = null;
   try { data = await res.json(); } catch { /* empty body */ }
-  if (!res.ok) throw new ApiError(data?.error || `Request failed (${res.status})`, res.status);
+  if (!res.ok) {
+    // An admin reset this account's password while the user was signed in: send them to set a new one.
+    if (data?.code === 'PASSWORD_CHANGE_REQUIRED' && window.location.pathname !== '/change-password') window.location.assign('/change-password');
+    throw new ApiError(data?.error || `Request failed (${res.status})`, res.status, data?.code);
+  }
   return data;
 }
 
