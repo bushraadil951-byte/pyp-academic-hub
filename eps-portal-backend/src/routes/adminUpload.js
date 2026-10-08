@@ -6,6 +6,8 @@ import { User } from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
 import { bad, str, wrap } from '../utils/helpers.js';
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const router = Router();
 router.use(requireAuth(ROLES.ADMIN));
 
@@ -36,7 +38,7 @@ async function annotate(input) {
 
   const rows = input.map((r) => ({
     name: str(r.name), grade: normGrade(str(r.grade)), section: (str(r.section) || 'A').toUpperCase(),
-    username: str(r.username), password: str(r.password), status: 'ok', message: '',
+    username: str(r.username), password: str(r.password), email: str(r.email).toLowerCase(), status: 'ok', message: '',
   }));
   // Reserve usernames the admin typed first, so generated ones never collide with them.
   for (const r of rows) {
@@ -51,7 +53,8 @@ async function annotate(input) {
     if (!r.username) { r.username = generateUsername(r.name, r.grade, taken); taken.add(r.username); }
     if (!/^[A-Za-z0-9._@-]{3,50}$/.test(r.username)) { r.status = 'invalid'; r.message = 'Username: 3–50 letters, numbers or . _ @ -'; continue; }
     if (!r.password) r.password = generatePassword(r.name, r.grade);
-    if (r.password.length < 6) { r.status = 'invalid'; r.message = 'Password needs at least 6 characters'; }
+    if (r.password.length < 6) { r.status = 'invalid'; r.message = 'Password needs at least 6 characters'; continue; }
+    if (r.email && (r.email.length > 254 || !EMAIL_RE.test(r.email))) { r.status = 'invalid'; r.message = 'Email address is not valid'; }
   }
   return rows;
 }
@@ -70,7 +73,8 @@ router.post('/confirm', wrap(async (req, res) => {
   for (let i = 0; i < good.length; i += 20) {            // hash in small batches so the server stays responsive
     const chunk = good.slice(i, i + 20);
     const docs = await Promise.all(chunk.map(async (r) => ({
-      name: r.name, username: r.username, role: ROLES.STUDENT, grade: r.grade, section: r.section, password: await bcrypt.hash(r.password, 10),
+      name: r.name, username: r.username, role: ROLES.STUDENT, grade: r.grade, section: r.section, email: r.email || null,
+      mustChangePassword: true, password: await bcrypt.hash(r.password, 10),
     })));
     try {
       const inserted = await User.insertMany(docs, { ordered: false });
@@ -85,6 +89,25 @@ router.post('/confirm', wrap(async (req, res) => {
   const createdNames = new Set(created.map((c) => c.username));
   const skipped = rows.filter((r) => !createdNames.has(r.username) || r.status !== 'ok').map((r) => ({ name: r.name, username: r.username, message: r.message || 'Username already exists' }));
   res.json({ added: created.length, created, skipped });
+}));
+
+// Add or update recovery emails for people who already exist (matched by username). Admin accounts are never touched.
+router.post('/emails', wrap(async (req, res) => {
+  const input = Array.isArray(req.body.rows) ? req.body.rows : [];
+  if (input.length === 0) throw bad('No rows to process.');
+  if (input.length > 2000) throw bad('Please upload at most 2000 rows at a time.');
+  const ops = []; const invalid = [];
+  for (const r of input) {
+    const username = str(r.username); const email = str(r.email).toLowerCase();
+    if (!username) continue;
+    if (!email) { invalid.push({ username, message: 'Email is empty' }); continue; }
+    if (email.length > 254 || !EMAIL_RE.test(email)) { invalid.push({ username, message: 'Email address is not valid' }); continue; }
+    ops.push({ updateOne: { filter: { username, role: { $ne: ROLES.ADMIN } }, update: { $set: { email } } } });
+  }
+  const usernames = [...new Set(ops.map((o) => o.updateOne.filter.username))];
+  const found = new Set((await User.find({ username: { $in: usernames }, role: { $ne: ROLES.ADMIN } }, 'username').lean()).map((u) => u.username));
+  if (ops.length) await User.bulkWrite(ops);
+  res.json({ updated: found.size, notFound: usernames.filter((u) => !found.has(u)), invalid });
 }));
 
 export default router;
