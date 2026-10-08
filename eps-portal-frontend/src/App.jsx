@@ -34,12 +34,16 @@ import { AptitudeStaff, AptitudeStudent } from './pages/profile/Aptitude.jsx';
 import IbtAnalytics from './pages/admin/Analytics.jsx';
 import StudentUpload from './pages/admin/StudentUpload.jsx';
 import ImportResults from './pages/admin/ImportResults.jsx';
+import ForgotPassword from './pages/ForgotPassword.jsx';
+import ChangePassword from './pages/ChangePassword.jsx';
+import EmailImport from './pages/admin/EmailImport.jsx';
 
 // Replaces Flask's @login_required(role). Wrong role -> back to the portal; logged out -> login.
-function Guard({ roles, children }) {
+function Guard({ roles, children, allowMustChange = false }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="empty">Loading…</div>;
   if (!user) return <Navigate to="/" replace />;
+  if (user.mustChange && !allowMustChange) return <Navigate to="/change-password" replace />;
   if (roles && !roles.includes(user.role)) return <Navigate to="/portal" replace />;
   return children;
 }
@@ -79,11 +83,14 @@ export default function App() {
     ['/student', [STUDENT], 'My Dashboard', <StudentDashboard />],
     ['/student/scores', [STUDENT], 'My Scores', <StudentScores />, '/student'],
     ['/student/review/:resultId', [STUDENT], 'Review', <StudentReview />, '/student/scores'],
+    ['/admin/emails', [ADMIN], 'Import Emails', <EmailImport />, '/admin/students'],
   ];
 
   return (
     <Routes>
       <Route path="/" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/change-password" element={<Guard allowMustChange><ChangePassword /></Guard>} />
       {routes.map(([path, roles, title, el, back]) => (
         <Route key={path} element={<Guard roles={roles}><Layout title={title} back={back} /></Guard>}>
           <Route path={path} element={el} />
