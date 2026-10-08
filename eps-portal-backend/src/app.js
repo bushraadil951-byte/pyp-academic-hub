@@ -15,6 +15,7 @@ import profileRoutes from './routes/profile.js';
 import adminUploadRoutes from './routes/adminUpload.js';
 import analyticsRoutes from './routes/analytics.js';
 import importResultsRoutes from './routes/importResults.js';
+import accountRoutes from './routes/account.js';
 
 export function createApp() {
   const app = express();
@@ -38,6 +39,7 @@ export function createApp() {
 
   app.get('/health', (_req, res) => res.send('OK')); // same health check URL Render already uses
   app.use('/api/auth', authRoutes);
+  app.use('/api/account', accountRoutes);
   app.use('/api/admin/student-upload', adminUploadRoutes);
   app.use('/api/admin/import-results', importResultsRoutes);
   app.use('/api/admin', adminRoutes);
@@ -57,7 +59,7 @@ export function createApp() {
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {
-    if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
+    if (err instanceof HttpError) return res.status(err.status).json({ error: err.message, ...(err.code ? { code: err.code } : {}) });
     if (err.code === 11000) return res.status(409).json({ error: 'That value already exists.' });
     if (err.name === 'ValidationError') return res.status(400).json({ error: Object.values(err.errors)[0]?.message || 'Invalid data.' });
     if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Request too large — images are limited to 2MB.' });
