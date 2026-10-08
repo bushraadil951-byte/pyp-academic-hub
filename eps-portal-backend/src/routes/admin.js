@@ -6,7 +6,7 @@ import { TestResult } from '../models/TestResult.js';
 import { requireAuth } from '../middleware/auth.js';
 import { hashPassword } from '../utils/password.js';
 import { scoreAttempt } from '../utils/scoring.js';
-import { HttpError, bad, notFound, oid, safeAvg, str, wrap } from '../utils/helpers.js';
+import { HttpError, bad, cleanEmail, notFound, oid, safeAvg, str, wrap } from '../utils/helpers.js';
 
 const DT_GRADES = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'];
 const SUBJECTS = ['English', 'Mathematics', 'Science', 'Reasoning'];
@@ -47,6 +47,7 @@ const personJson = (u) => ({
   viewGrade: u.viewGrade ?? null,
   viewSection: u.viewSection ?? null,
   editSection: u.editSection ?? null,
+  email: u.email ?? null
 });
 
 function peopleRoutes(role) {
@@ -72,6 +73,7 @@ function peopleRoutes(role) {
       role,
       grade,
       password: hashPassword(password),
+      email: cleanEmail(req.body.email), mustChangePassword: true,
       section: isStudent ? (str(req.body.section) || 'A') : null,
       viewGrade: !isStudent ? (str(req.body.viewGrade) || null) : null,
       viewSection: !isStudent ? (str(req.body.viewSection) || null) : null,
@@ -94,7 +96,12 @@ function peopleRoutes(role) {
       user.editSection = str(req.body.editSection) || null;
     }
 
-    if (str(req.body.password)) user.password = hashPassword(str(req.body.password));
+    if ('email' in req.body) user.email = cleanEmail(req.body.email);
+    if (str(req.body.password)) {
+      user.password = hashPassword(str(req.body.password));
+      user.mustChangePassword = true;
+      user.passwordChangedAt = new Date();
+    }
     await user.save();
     res.json(personJson(user));
   }));
