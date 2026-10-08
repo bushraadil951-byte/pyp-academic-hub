@@ -38,7 +38,16 @@ router.get('/dashboard', wrap(async (_req, res) => {
 }));
 
 // ── Students & teachers (same shape, one factory) ────────────────────────────
-const personJson = (u) => ({ id: u.id, name: u.name, username: u.username, grade: u.grade ?? null, section: u.section ?? null });
+const personJson = (u) => ({
+  id: u.id,
+  name: u.name,
+  username: u.username,
+  grade: u.grade ?? null,
+  section: u.section ?? null,
+  viewGrade: u.viewGrade ?? null,
+  viewSection: u.viewSection ?? null,
+  editSection: u.editSection ?? null,
+});
 
 function peopleRoutes(role) {
   const isStudent = role === ROLES.STUDENT;
@@ -56,9 +65,17 @@ function peopleRoutes(role) {
     if (!name || !username || !password) throw bad('Name, username and password are required.');
     if (isStudent && !DT_GRADES.includes(grade)) throw bad('Choose a grade.');
     if (await User.exists({ username })) throw new HttpError(409, 'Username already exists.');
+
     const user = await User.create({
-      name, username, role, grade, password: hashPassword(password),
+      name,
+      username,
+      role,
+      grade,
+      password: hashPassword(password),
       section: isStudent ? (str(req.body.section) || 'A') : null,
+      viewGrade: !isStudent ? (str(req.body.viewGrade) || null) : null,
+      viewSection: !isStudent ? (str(req.body.viewSection) || null) : null,
+      editSection: !isStudent ? (str(req.body.editSection) || null) : null,
     });
     res.status(201).json(personJson(user));
   }));
@@ -68,12 +85,19 @@ function peopleRoutes(role) {
     if (!user) throw notFound(`${label} not found.`);
     if (str(req.body.name)) user.name = str(req.body.name);
     user.grade = str(req.body.grade) || null;
-    if (isStudent) user.section = str(req.body.section) || 'A';
+
+    if (isStudent) {
+      user.section = str(req.body.section) || 'A';
+    } else {
+      user.viewGrade = str(req.body.viewGrade) || null;
+      user.viewSection = str(req.body.viewSection) || null;
+      user.editSection = str(req.body.editSection) || null;
+    }
+
     if (str(req.body.password)) user.password = hashPassword(str(req.body.password));
     await user.save();
     res.json(personJson(user));
   }));
-
   r.delete('/:id', wrap(async (req, res) => {
     const user = await User.findOneAndDelete({ _id: oid(req.params.id), role });
     if (!user) throw notFound(`${label} not found.`);
