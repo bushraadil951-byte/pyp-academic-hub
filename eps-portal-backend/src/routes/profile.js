@@ -18,7 +18,18 @@ const staff = requireAuth(ROLES.TEACHER, ROLES.ADMIN);
 const student = requireAuth(ROLES.STUDENT);
 
 // ── helpers ─────────────────────────────────────────────────────────────────
-const lockedGrade = async (req) => (req.user.role === ROLES.TEACHER ? (await User.findById(req.user.id).select('grade'))?.grade || null : null);
+const getTeacherAccess = async (req) => {
+  if (req.user.role !== ROLES.TEACHER) return null;
+  const u = await User.findById(req.user.id).select('grade section viewGrade viewSection editSection');
+  return {
+    viewGrade: u?.viewGrade || null,
+    viewSection: u?.viewSection || null,
+    editGrade: u?.grade || null,
+    editSection: u?.editSection || null,
+  };
+};
+
+const lockedGrade = async (req) => (await getTeacherAccess(req))?.viewGrade || null;
 const avg = (xs) => (xs.length ? safeAvg(xs) : 0);
 const person = (u) => ({ id: String(u._id ?? u.id), name: u.name, grade: u.grade ?? null, section: u.section || '' });
 
@@ -33,24 +44,34 @@ function checkTerm(raw) {
   return term;
 }
 
-// Students the caller may see: teachers only in their grade; admins may filter by grade/section.
+// Students the caller may see based on Viewing permissions
 async function visibleStudents(req) {
-  const locked = await lockedGrade(req);
-  const grade = locked || str(req.query.grade) || null;
-  const section = str(req.query.section) || null;
-  const rows = await User.find({ role: ROLES.STUDENT, ...(grade ? { grade } : {}), ...(section ? { section } : {}) }).sort({ grade: 1, name: 1 }).lean();
-  return { rows, grade, section, locked };
+  const acc = await getTeacherAccess(req);
+  const grade = acc?.viewGrade || str(req.query.grade) || null;
+  const section = acc?.viewSection || str(req.query.section) || null;
+  const rows = await User.find({ role: ROLES.STUDENT, ...(grade ? { grade } : {}), ...(section ? { section } : {}) }).sort({ grade: 1, section: 1, name: 1 }).lean();
+  return { rows, grade, section, locked: acc?.viewGrade || null };
 }
 
-// Loads a student and enforces the teacher's grade lock.
+// Student lookup: viewing permission check
 async function studentForStaff(req, id) {
   const s = await User.findOne({ _id: oid(id), role: ROLES.STUDENT });
   if (!s) throw notFound('Student not found.');
-  const locked = await lockedGrade(req);
-  if (locked && s.grade !== locked) throw new HttpError(403, 'That student is not in your grade.');
+  const acc = await getTeacherAccess(req);
+  if (acc) {
+    if (acc.viewGrade && s.grade !== acc.viewGrade) throw new HttpError(403, 'You do not have access to view this grade.');
+    if (acc.viewSection && s.section !== acc.viewSection) throw new HttpError(403, 'You do not have access to view this section.');
+  }
   return s;
 }
 
+// Student edit permission check
+async function checkStudentEditPerm(req, s) {
+  const acc = await getTeacherAccess(req);
+  if (!acc) return;
+  if (acc.editGrade && s.grade !== acc.editGrade) throw new HttpError(403, `You only have editing access for ${acc.editGrade}.`);
+  if (acc.editSection && s.section !== acc.editSection) throw new HttpError(403, `You only have editing access for section ${acc.editSection}.`);
+}
 const mapBy = (rows, key, val) => Object.fromEntries(rows.map((r) => [r[key], val(r)]));
 
 // ── Config (constants) ──────────────────────────────────────────────────────
@@ -98,6 +119,7 @@ router.get('/ib/lp', staff, wrap(async (req, res) => {
 
 router.put('/ib/lp', staff, wrap(async (req, res) => {
   const s = await studentForStaff(req, req.body.studentId);
+  await checkStudentEditPerm(req, s);
   const term = checkTerm(req.body.term);
   const input = req.body.ratings && typeof req.body.ratings === 'object' ? req.body.ratings : {};
   let saved = 0;
@@ -270,6 +292,7 @@ router.get('/isp/rate', staff, wrap(async (req, res) => {
 
 router.put('/isp/rate', staff, wrap(async (req, res) => {
   const s = await studentForStaff(req, req.body.studentId);
+  await checkStudentEditPerm(req, s);
   const input = req.body.ratings && typeof req.body.ratings === 'object' ? req.body.ratings : {};
   let saved = 0;
   for (const attribute of ISP_ATTRIBUTES) {
