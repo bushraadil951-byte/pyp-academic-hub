@@ -48,7 +48,7 @@ export default function ForgotPassword() {
       {step === 1 && (
         <>
           <div className="login-heading">Forgot password?</div>
-          <p className="login-subheading">Enter your username and we will email you a 6-digit code.</p>
+          <p className="login-subheading">Enter your username to get a 6-digit code.</p>
           {error && <div className="alert alert-error">{error}</div>}
           <form onSubmit={send}>
             <div className="form-group">
@@ -58,7 +58,6 @@ export default function ForgotPassword() {
             </div>
             <button type="submit" className="login-button" disabled={busy}>{busy ? 'Sending…' : 'Send code'}</button>
           </form>
-          <p className="footer-note" style={{ marginTop: 16 }}>Students: the code goes to the parent or guardian email the school has on file. No email on file? Ask your teacher or the school office to reset your password.</p>
         </>
       )}
 
