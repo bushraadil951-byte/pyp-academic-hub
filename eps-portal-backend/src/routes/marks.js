@@ -13,8 +13,9 @@ const staff = requireAuth(ROLES.TEACHER, ROLES.ADMIN);
 const adminOnly = requireAuth(ROLES.ADMIN);
 
 // Teacher access points helper (viewing vs editing)
+// Safe teacher access helper
 const getTeacherAccess = async (req) => {
-  if (req.user.role !== ROLES.TEACHER) return null;
+  if (req.user?.role !== ROLES.TEACHER) return null;
   const u = await User.findById(req.user.id).select('grade section viewGrade viewSection editSection');
   return {
     viewGrade: u?.viewGrade || null,
@@ -24,9 +25,14 @@ const getTeacherAccess = async (req) => {
   };
 };
 
-const lockedGrade = async (req) => (await getTeacherAccess(req))?.viewGrade || null;
+const lockedGrade = async (req) => {
+  if (req.user?.role !== ROLES.TEACHER) return null;
+  const acc = await getTeacherAccess(req);
+  return acc?.viewGrade || null;
+};
 
 const checkEditPerm = async (req, grade, section) => {
+  if (req.user?.role !== ROLES.TEACHER) return;
   const acc = await getTeacherAccess(req);
   if (!acc) return;
   if (acc.editGrade && grade && acc.editGrade !== grade) {
@@ -37,9 +43,11 @@ const checkEditPerm = async (req, grade, section) => {
   }
 };
 router.param('kind', (req, _res, next, raw) => {
-  const kind = String(raw).toUpperCase();
-  if (!MARK_KINDS[kind]) return next(notFound());
-  req.kind = kind; req.cfg = MARK_KINDS[kind];
+  const rawStr = String(raw || '');
+  const matchKey = Object.keys(MARK_KINDS).find((k) => k.toLowerCase() === rawStr.toLowerCase());
+  if (!matchKey || !MARK_KINDS[matchKey]) return next(notFound());
+  req.kind = matchKey;
+  req.cfg = MARK_KINDS[matchKey];
   next();
 });
 
