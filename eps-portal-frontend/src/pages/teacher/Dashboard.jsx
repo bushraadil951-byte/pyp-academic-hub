@@ -6,11 +6,14 @@ export default function TeacherDashboard() {
   const { data: d, loading, error } = useFetch('/teacher/dashboard');
   if (loading) return <Loading />;
   if (error) return <div className="alert alert-error">{error.message}</div>;
-  if (!d.grade) return <div className="card"><Empty>No grade is assigned to your account yet. Ask an administrator to assign one.</Empty></div>;
+  if (d.grade === null && d.studentCount === 0) return <div className="card"><Empty>No access assigned to your account yet. Ask an administrator to assign one.</Empty></div>;
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
-        <Badge tone="purple">{d.grade}</Badge>
+<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Badge tone="purple">👁️ Viewing: {d.grade}{d.section && d.section !== 'All sections' ? ` - Sec ${d.section}` : ''}</Badge>
+          <Badge tone="blue">✏️ Editing: {d.access?.editGrade || 'All grades'}{d.access?.editSection ? ` - Sec ${d.access.editSection}` : ''}</Badge>
+        </div>
         <Link to="/portal" className="btn btn-secondary btn-sm">🏠 Portal Home</Link>
       </div>
       <div className="stat-grid">
