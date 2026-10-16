@@ -139,7 +139,7 @@ router.get('/:kind/dashboard', staff, wrap(async (req, res) => {
 
 // ── Entry (one subject + number + grade/section) ────────────────────────────
 // Strand subjects (FA/SA English, Hindi, Urdu, Maths) are entered strand by strand: each strand has its own
-// maximum marks and its own column. Other subjects (Science, all of DT) keep one mark per student.
+// maximum marks and its own column.
 router.get('/:kind/entry', staff, wrap(async (req, res) => {
   const locked = await lockedGrade(req);
   const defaultGrade = locked || req.query.grade || MARK_GRADES[0];
