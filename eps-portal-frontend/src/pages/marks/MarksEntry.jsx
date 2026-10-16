@@ -78,9 +78,7 @@ export default function MarksEntry() {
       // Intersect with backend options when they are provided.
       // If Science options are missing, use the configured UOI options;
       // the backend must still be configured to accept these strands.
-      const activeStrands = subject === 'Science' && availableStrands.length
-        ? selectedStrands.filter((st) => availableStrands.includes(st))
-        : selectedStrands;
+      const activeStrands = selectedStrands;
 
       const normalized = {
         ...d,
