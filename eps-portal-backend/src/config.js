@@ -32,7 +32,7 @@ const ASSESSMENT_STRANDS = {
   Hindi: LANGUAGE_STRANDS,
   Urdu: LANGUAGE_STRANDS,
   Maths: ['Numbers', 'Shape and Space', 'Measurement', 'Data Handling', 'Patterns and Function'],
-  // Science: ['Living Things', 'Earth and Space', 'Materials and Matter', 'Forces and Energy'],   <- remove the // if Science is assessed by strands too
+  Science: ['UOI-1', 'UOI-2', 'UOI-3', 'UOI-4', 'UOI-5', 'UOI-6'],
 };
 
 // DT, FA and SA all work the same way: a numbered sheet of marks per subject / grade / section.
