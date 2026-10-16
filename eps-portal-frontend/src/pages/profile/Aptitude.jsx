@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { useFetch } from '../../components/useFetch.js';
 import { Empty, Loading } from '../../components/ui.jsx';
+import { subjectLabel } from '../../constants.js';
 
 // 75+ Strong, 50+ Developing, below 50 Needs focus (same bands as the Flask template).
 export const band = (s) => (s === null || s === undefined ? { label: 'No data', color: '#94a3b8', bg: '#f1f5f9' }
@@ -182,7 +183,7 @@ export function AptitudeStudent() {
                   <div key={label} style={{ marginTop: 8 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.78rem' }}><span>{label} <span style={{ color: 'var(--ink3)' }}>({w(s, k)}% weight)</span></span><strong>{v === null ? '—' : `${v}%`}</strong></div>
                     <div className="progress" style={{ height: 8 }}><div className="progress-fill" style={{ width: `${v || 0}%`, background: c }} /></div>
-                  </div>)) : <div className="sec-sub" style={{ marginTop: 8 }}>No marks yet for {d.weights[s].subjects.join(', ')}.</div>}
+                  </div>)) : <div className="sec-sub" style={{ marginTop: 8 }}>No marks yet for {d.weights[s].subjects.map(subjectLabel).join(', ')}.</div>}
               </div>); })}
           </div>
         </>
