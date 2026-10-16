@@ -41,3 +41,11 @@ export const PORTAL_MODULES = {
 };
 
 export const ACADEMIC_YEAR = '2026-27';
+export const UOI_STRANDS = {
+  SA1: ['UOI-1', 'UOI-2', 'UOI-3'],
+  SA2: ['UOI-4', 'UOI-5', 'UOI-6'],
+  FA:  ['UOI-1', 'UOI-2', 'UOI-3', 'UOI-4', 'UOI-5', 'UOI-6'], // any FA, any time
+};
+
+// Show "UOI" wherever the app shows the subject name "Science" (not on IBT pages)
+export const subjectLabel = (s) => (s === 'Science' ? 'UOI' : s);
