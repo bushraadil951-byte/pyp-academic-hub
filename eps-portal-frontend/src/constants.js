@@ -41,11 +41,23 @@ export const PORTAL_MODULES = {
 };
 
 export const ACADEMIC_YEAR = '2026-27';
+
+// Strand options for Science in FA and SA assessments.
+// The stored subject remains 'Science'; only its display label changes to 'UOI'.
+export const UOI_BY_ASSESSMENT = {
+  SA: {
+    1: ['UOI-1', 'UOI-2', 'UOI-3'],
+    2: ['UOI-4', 'UOI-5', 'UOI-6'],
+  },
+  FA: ['UOI-1', 'UOI-2', 'UOI-3', 'UOI-4', 'UOI-5', 'UOI-6'],
+};
+
+// Keep this for any existing code that still imports UOI_STRANDS.
 export const UOI_STRANDS = {
   SA1: ['UOI-1', 'UOI-2', 'UOI-3'],
   SA2: ['UOI-4', 'UOI-5', 'UOI-6'],
-  FA:  ['UOI-1', 'UOI-2', 'UOI-3', 'UOI-4', 'UOI-5', 'UOI-6'], // any FA, any time
+  FA: ['UOI-1', 'UOI-2', 'UOI-3', 'UOI-4', 'UOI-5', 'UOI-6'],
 };
 
-// Show "UOI" wherever the app shows the subject name "Science" (not on IBT pages)
+// Display Science as UOI outside IBT pages.
 export const subjectLabel = (s) => (s === 'Science' ? 'UOI' : s);
