@@ -1,6 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useFetch } from '../../components/useFetch.js';
 
+// Marks pages work for both Primary (/marks/...) and EY (/ey/...).
+export function useLevel() {
+  const { pathname } = useLocation();
+  const ey = pathname.toLowerCase().startsWith('/ey');
+  return { ey, base: ey ? '/ey' : '/marks', cfgUrl: ey ? '/marks/config?level=ey' : '/marks/config' };
+}
+
 // Shared /profile/config (terms, scales, constants). Cached per mount; it is small.
 export const useProfileConfig = () => useFetch('/profile/config');
 
