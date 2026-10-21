@@ -11,6 +11,11 @@ import { computeStrandAnalytics, computeStudentStrands } from '../utils/strandMa
 const router = Router();
 const staff = requireAuth(ROLES.TEACHER, ROLES.ADMIN);
 const adminOnly = requireAuth(ROLES.ADMIN);
+const EY_GRADES = ['Nursery', 'KG-1', 'KG-2'];
+const EY_NO_HINDI = ['Nursery', 'KG-1'];
+const EY_UOI = ['UOI-1', 'UOI-2', 'UOI-3', 'UOI-4'];
+const isEy = (g) => EY_GRADES.includes(g);
+const ALL_GRADES = [...MARK_GRADES, ...EY_GRADES];   // MARK_GRADES stays primary-only: do not add EY to config.js
 
 // Teacher access points helper (viewing vs editing)
 // Safe teacher access helper
@@ -57,16 +62,24 @@ function slot(req, source) {
   const section = str(source.section) || null;
   const subject = req.cfg.subjects.find((s) => s.toLowerCase() === str(source.subject).toLowerCase());
   const number = Number(source.number);
-  if (!MARK_GRADES.includes(grade)) throw bad('Choose a valid grade.');
+  if (!ALL_GRADES.includes(grade)) throw bad('Choose a valid grade.');
   if (section && !MARK_SECTIONS.includes(section)) throw bad('Choose a valid section.');
   if (!subject) throw bad('Choose a valid subject.');
-  if (!req.cfg.numbers.includes(number)) throw bad(`Choose a valid ${req.kind} number.`);
+  if (isEy(grade) && req.kind === 'DT') throw bad('EY classes have FA and SA only.');
+  if (EY_NO_HINDI.includes(grade) && subject === 'Hindi') throw bad('Hindi is not taught in Nursery and KG-1.');
   return { kind: req.kind, grade, section, subject, strand: null, number, academicYear: ACADEMIC_YEAR };
 }
 
 // The strands of a subject for this assessment type, or null when the subject has a single mark (Science, DT).
-const strandsOf = (req, subject) => req.cfg.strands?.[subject] || null;
-const strandMap = (req) => req.cfg.strands || {};
+const strandsOf = (req, subject, grade) => {
+  if (subject === 'Science' && isEy(grade) && req.cfg.strands?.Science) return EY_UOI;
+  return req.cfg.strands?.[subject] || null;
+};
+const strandMap = (req, grade) => {
+  const m = { ...(req.cfg.strands || {}) };
+  if (isEy(grade) && m.Science) m.Science = EY_UOI;
+  return m;
+};
 
 const studentsOf = (grade, section) =>
   User.find({ role: ROLES.STUDENT, grade, ...(section ? { section } : {}) }).sort({ name: 1 }).select('name username section').lean();
@@ -101,13 +114,13 @@ const parseValue = (v, max) => {
 };
 
 // ── Student progress (own marks only) ───────────────────────────────────────
-router.get('/student-progress/:kind', requireAuth(ROLES.STUDENT), wrap(async (req, res) => {
-  const me = await User.findById(req.user.id);
-  const raw = await MarkSheet.find({ kind: req.kind, grade: me.grade, academicYear: ACADEMIC_YEAR }).lean();
-  const common = { studentId: me.id, studentSection: me.section, numbers: req.cfg.numbers };
-  const { series, insights } = computeStudentSeries({ sheets: collapseStrands(raw), subjects: req.cfg.subjects, ...common });
-  const strands = computeStudentStrands({ sheets: raw, strandsBySubject: strandMap(req), ...common });   // { subject: [{strand, points, average, status}] }
-  res.json({ label: req.cfg.label, academicYear: ACADEMIC_YEAR, student: { name: me.name, grade: me.grade, section: me.section }, subjects: req.cfg.subjects, numbers: req.cfg.numbers, series, insights, strands });
+router.get('/config', staff, wrap(async (req, res) => {
+  const ey = req.query.level === 'ey';
+  const levelGrades = ey ? EY_GRADES : MARK_GRADES;
+  const locked = await lockedGrade(req);
+  const grades = locked ? (levelGrades.includes(locked) ? [locked] : []) : levelGrades;
+  const kinds = Object.entries(MARK_KINDS).filter(([k]) => !ey || k !== 'DT');
+  res.json({ academicYear: ACADEMIC_YEAR, kinds: Object.fromEntries(kinds.map(([k, c]) => [k, { ...c, strands: c.strands || {}, columns: columnsFor(c) }])), grades, gradeLocked: !!locked, sections: MARK_SECTIONS, isAdmin: req.user.role === ROLES.ADMIN });
 }));
 
 // ── Config and hub ──────────────────────────────────────────────────────────
@@ -146,7 +159,7 @@ router.get('/:kind/entry', staff, wrap(async (req, res) => {
   const defaultSub = req.query.subject || req.cfg?.subjects?.[0] || 'English';
   const defaultNum = Number(req.query.number || req.cfg?.numbers?.[0] || 1);
   const s = slot(req, { ...req.query, grade: defaultGrade, subject: defaultSub, number: defaultNum });
-  const strands = strandsOf(req, s.subject);
+  const strands = strandsOf(req, s.subject, s.grade);
   const [students, sheets] = await Promise.all([studentsOf(s.grade, s.section), findSheets(s, strands)]);
   const slotOut = { grade: s.grade, section: s.section || '', subject: s.subject, number: s.number };
 
@@ -176,7 +189,7 @@ router.put('/:kind/entry', staff, wrap(async (req, res) => {
   const locked = await lockedGrade(req);
   const s = slot(req, { ...req.body, grade: locked || req.body.grade });
   await checkEditPerm(req, s.grade, s.section);
-  const strands = strandsOf(req, s.subject);
+  const strands = strandsOf(req, s.subject, s.grade);
   const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
   const roster = new Map((await studentsOf(s.grade, s.section)).map((u) => [String(u._id), u.name]));
   const testDate = req.body.testDate ? new Date(req.body.testDate) : null;
@@ -410,14 +423,14 @@ router.put('/:kind/bulk', staff, wrap(async (req, res) => {
 router.get('/:kind/analytics', staff, wrap(async (req, res) => {
   const locked = await lockedGrade(req);
   const grade = locked || req.query.grade || MARK_GRADES[0];
-  if (!MARK_GRADES.includes(grade)) throw bad('Choose a valid grade.');
+  if (!ALL_GRADES.includes(grade)) throw bad('Choose a valid grade.');
   const section = str(req.query.section) || null;
   const [students, raw] = await Promise.all([studentsOf(grade, section), MarkSheet.find({ kind: req.kind, grade, academicYear: ACADEMIC_YEAR }).lean()]);
   const list = students.map(asStudent);
   res.json({
     grade, section: section || '', academicYear: ACADEMIC_YEAR,
     ...computeGradeAnalytics({ students: list, sheets: collapseStrands(raw), subjects: req.cfg.subjects, numbers: req.cfg.numbers }),
-    strandAnalytics: computeStrandAnalytics({ students: list, sheets: raw, strandsBySubject: strandMap(req), numbers: req.cfg.numbers }),
+    strandAnalytics: computeStrandAnalytics({ students: list, sheets: raw, strandsBySubject: strandMap(req, grade), numbers: req.cfg.numbers }),
   });
 }));
 
