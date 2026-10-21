@@ -6,14 +6,15 @@ import { useFlash } from '../../flash.jsx';
 import { useFetch } from '../../components/useFetch.js';
 import { Empty, Field, Loading } from '../../components/ui.jsx';
 import { KindTabs, Pct, useKind } from './shared.jsx';
-import { UOI_BY_ASSESSMENT, subjectLabel } from '../../constants.js';
+import { UOI_BY_ASSESSMENT, subjectLabel, EY_GRADES, EY_NO_HINDI, EY_UOI } from '../../constants.js';
 
 const DEFAULT_STRAND_MAX = 10;
 
 // Science is stored as "Science" but displayed as "UOI".
 // For other subjects, the backend remains the source of strand options.
-const strandOptions = (subject, type, number, availableStrands = []) => {
+const strandOptions = (subject, type, number, availableStrands = [],grade = '') => {
   if (subject === 'Science') {
+    if (EY_GRADES.includes(grade)) return EY_UOI;
     if (type === 'SA') return UOI_BY_ASSESSMENT.SA[number] || [];
     if (type === 'FA') return UOI_BY_ASSESSMENT.FA;
     return []; // DT has no strands.
@@ -48,7 +49,12 @@ export default function MarksEntry() {
     else n.delete(k);
     setSp(n, { replace: true });
   };
-
+  useEffect(() => {
+    if (kc && subject === 'Hindi' && EY_NO_HINDI.includes(grade)) {
+      setFilter('subject', kc.subjects.find((s) => s !== 'Hindi') || '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kc, subject, grade]);
   useEffect(() => {
     if (!cfg || !kc) return undefined;
 
@@ -72,7 +78,8 @@ export default function MarksEntry() {
         subject,
         kind,
         number,
-        availableStrands
+        availableStrands,
+        grade
       );
 
       // Intersect with backend options when they are provided.
@@ -277,8 +284,8 @@ export default function MarksEntry() {
             'Subject',
             subject,
             (v) => setFilter('subject', v),
-            kc.subjects.map((s) => [s, subjectLabel(s)])
-          )}
+            kc.subjects.filter((s) => !(s === 'Hindi' && EY_NO_HINDI.includes(grade))).map((s) => [s, subjectLabel(s)])
+          }
 
           {select(
             `${kind} number`,
