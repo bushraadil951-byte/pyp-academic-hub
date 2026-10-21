@@ -2,6 +2,9 @@
 export const SUBJECTS = ['English', 'Mathematics', 'Science', 'Reasoning'];
 export const GRADES = ['Grade 3', 'Grade 4', 'Grade 5'];
 export const DT_GRADES = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'];
+export const EY_GRADES = ['Nursery', 'KG-1', 'KG-2'];
+export const EY_NO_HINDI = ['Nursery', 'KG-1'];
+export const EY_UOI = ['UOI-1', 'UOI-2', 'UOI-3', 'UOI-4'];
 export const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
 export const SECTIONS_BY_SUBJECT = {
   English: ['Reading Comprehension', 'Grammar', 'Spelling', 'Vocabulary', 'Punctuation'],
@@ -20,6 +23,7 @@ export const PORTAL_MODULES = {
     { key: 'dt', name: 'DT — Diagnostic Tests', icon: '📊', desc: 'Enter diagnostic marks, view grade analytics and per-student progress across all DTs.', to: '/marks/DT' },
     { key: 'isp', name: 'ISP Profile Development', icon: '📖', desc: 'Track Islamic Studies Programme character attributes for each student.', to: '/isp' },
     { key: 'assessments', name: 'FA & SA — Formative & Summative', icon: '📋', desc: 'Enter formative and summative marks.', to: '/marks' },
+    { key: 'ey', name: 'EY — Early Years', icon: '🧒', desc: 'Nursery, KG-1 and KG-2: enter FA and SA marks and view Aptitude.', to: '/ey' },
     { key: 'ib', name: 'IB Profile Development', icon: '🌱', desc: 'Rate students on Learner Profile attributes and ATL skills. View holistic growth reports per student.', to: '/ib' },
     { key: 'aptitude', name: 'Aptitude Analytics', icon: '🎯', desc: 'View class aptitude heatmap and per-strand student rankings.', to: '/aptitude' },
   ],
@@ -27,6 +31,7 @@ export const PORTAL_MODULES = {
     { key: 'ibt', name: 'IBT — Mock Tests', icon: '📝', desc: 'View student scores and section-wise analytics for mock tests.', to: '/teacher' },
     { key: 'dt', name: 'DT — Diagnostic Tests', icon: '📊', desc: 'Enter diagnostic marks, view grade analytics and per-student progress across all DTs.', to: '/marks/DT' },
     { key: 'assessments', name: 'FA & SA — Formative & Summative', icon: '📋', desc: 'Enter formative and summative marks.', to: '/marks' },
+    { key: 'ey', name: 'EY — Early Years', icon: '🧒', desc: 'Nursery, KG-1 and KG-2: enter FA and SA marks and view Aptitude.', to: '/ey' },
     { key: 'ib', name: 'IB Profile Development', icon: '🌱', desc: 'Rate your students on Learner Profile attributes and ATL skills each term.', to: '/ib' },
     { key: 'isp', name: 'ISP Profile Development', icon: '📖', desc: 'Rate students on ISP character attributes anytime.', to: '/isp' },
     { key: 'aptitude', name: 'Aptitude Analytics', icon: '🎯', desc: 'View class aptitude heatmap and per-strand student rankings.', to: '/aptitude' },
