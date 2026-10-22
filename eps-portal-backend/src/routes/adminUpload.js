@@ -11,22 +11,32 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const router = Router();
 router.use(requireAuth(ROLES.ADMIN));
 
-const GRADES = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'];
+const GRADES = ['Nursery', 'KG-1', 'KG-2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'];
 const SECTIONS = ['A', 'B', 'C', 'D'];
 const MAX_ROWS = 500;
 
 const digits = (s) => s.replace(/[^0-9]/g, '');
-const normGrade = (g) => (/^\d+$/.test(g) ? `Grade ${g}` : g);
+// "3" -> Grade 3, and "nursery", "KG 1", "kg-2" etc. -> the standard names.
+const normGrade = (g) => {
+  if (/^\d+$/.test(g)) return `Grade ${g}`;
+  const k = g.toLowerCase().replace(/[\s_-]/g, '');
+  if (k === 'nursery') return 'Nursery';
+  if (k === 'kg1') return 'KG-1';
+  if (k === 'kg2') return 'KG-2';
+  return g;
+};
+const userTag = (g) => (g === 'Nursery' ? 'nur' : g.startsWith('KG-') ? `kg${digits(g)}` : `g${digits(g)}`);
+const passTag = (g) => (g === 'Nursery' ? 'Nur' : g.startsWith('KG-') ? `KG${digits(g)}` : digits(g));
 const generateUsername = (name, grade, taken) => {
   const first = (name.split(/\s+/)[0] || 'student').toLowerCase().replace(/[^a-z0-9]/g, '') || 'student';
-  const base = `${first}_g${digits(grade)}`;
+  const base = `${first}_${userTag(grade)}`;
   let username = base; let n = 1;
   while (taken.has(username)) { username = `${base}${n}`; n += 1; }
   return username;
 };
 const generatePassword = (name, grade) => {
   const first3 = name.slice(0, 3);
-  return `EPS@${first3.charAt(0).toUpperCase()}${first3.slice(1).toLowerCase()}${digits(grade)}`;
+  return `EPS@${first3.charAt(0).toUpperCase()}${first3.slice(1).toLowerCase()}${passTag(grade)}`;
 };
 
 // Cleans every row, fills in missing usernames/passwords, and marks each ok | exists | invalid.
@@ -48,7 +58,7 @@ async function annotate(input) {
     else taken.add(r.username);
   }
   for (const r of rows) {
-    if (!r.name || !GRADES.includes(r.grade)) { r.status = 'invalid'; r.message = !r.name ? 'Name is required' : 'Grade must be Grade 1–5'; continue; }
+    if (!r.name || !GRADES.includes(r.grade)) { r.status = 'invalid'; r.message = !r.name ? 'Name is required' : 'Grade must be Nursery, KG-1, KG-2 or Grade 1–5'; continue; }
     if (!SECTIONS.includes(r.section)) { r.status = 'invalid'; r.message = 'Section must be A, B, C or D'; continue; }
     if (!r.username) { r.username = generateUsername(r.name, r.grade, taken); taken.add(r.username); }
     if (!/^[A-Za-z0-9._@-]{3,50}$/.test(r.username)) { r.status = 'invalid'; r.message = 'Username: 3–50 letters, numbers or . _ @ -'; continue; }
