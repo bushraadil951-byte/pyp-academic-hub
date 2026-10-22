@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
-import { ACADEMIC_YEAR, PORTAL_MODULES, ROLE_LABELS } from '../constants.js';
+import { ACADEMIC_YEAR, EY_GRADES, EY_STUDENT_MODULES, PORTAL_MODULES, ROLE_LABELS } from '../constants.js';
 import './portal.css';
 
 export default function PortalHome() {
   const { user } = useAuth();
-  const modules = PORTAL_MODULES[user.role] || [];
+  const isEyStudent = user.role === 'student' && EY_GRADES.includes(user.grade);
+  const modules = isEyStudent ? EY_STUDENT_MODULES : (PORTAL_MODULES[user.role] || []);
   return (
     <div className="portal-wrap">
       <section className="portal-hero">
@@ -41,7 +42,7 @@ export default function PortalHome() {
           <div className="no-modules"><div className="no-modules-icon">📚</div><div>No modules available for your role yet.</div></div>
         )}
         {modules.map((m) => (
-          <Link key={m.key} to={m.to} className={`module-card module-${m.key}`}>
+          <Link key={m.to} to={m.to} className={`module-card module-${m.key}`}>
             <div className="module-top"><div className="mc-icon">{m.icon}</div><div className="module-open">→</div></div>
             <div className="mc-name">{m.name}</div>
             <div className="mc-desc">{m.desc}</div>
