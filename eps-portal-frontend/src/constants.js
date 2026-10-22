@@ -5,6 +5,12 @@ export const DT_GRADES = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5']
 export const EY_GRADES = ['Nursery', 'KG-1', 'KG-2'];
 export const EY_NO_HINDI = ['Nursery', 'KG-1'];
 export const EY_UOI = ['UOI-1', 'UOI-2', 'UOI-3', 'UOI-4'];
+// Portal tiles for Nursery / KG-1 / KG-2 students: FA, SA and Aptitude only.
+export const EY_STUDENT_MODULES = [
+  { key: 'assessments', name: 'FA — Formative Assessments', icon: '📋', desc: 'Track your formative assessment progress in every subject.', to: '/student/progress/FA' },
+  { key: 'assessments', name: 'SA — Summative Assessments', icon: '📋', desc: 'Track your summative assessment progress in every subject.', to: '/student/progress/SA' },
+  { key: 'aptitude', name: 'Aptitude Profile', icon: '🎯', desc: 'See your aptitude strands, calculated from your FA and SA marks.', to: '/student/aptitude' },
+];
 export const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
 export const SECTIONS_BY_SUBJECT = {
   English: ['Reading Comprehension', 'Grammar', 'Spelling', 'Vocabulary', 'Punctuation'],
