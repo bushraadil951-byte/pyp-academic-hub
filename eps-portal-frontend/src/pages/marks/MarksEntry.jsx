@@ -5,7 +5,7 @@ import { api } from '../../api.js';
 import { useFlash } from '../../flash.jsx';
 import { useFetch } from '../../components/useFetch.js';
 import { Empty, Field, Loading } from '../../components/ui.jsx';
-import { KindTabs, Pct, useKind } from './shared.jsx';
+import { KindTabs, Pct, useKind, useLevel } from './shared.jsx';
 import { UOI_BY_ASSESSMENT, subjectLabel, EY_GRADES, EY_NO_HINDI, EY_UOI } from '../../constants.js';
 
 const DEFAULT_STRAND_MAX = 10;
@@ -25,7 +25,8 @@ const strandOptions = (subject, type, number, availableStrands = [],grade = '') 
 
 export default function MarksEntry() {
   const flash = useFlash();
-  const { data: cfg } = useFetch('/marks/config');
+  const { base, cfgUrl } = useLevel();
+  const { data: cfg } = useFetch(cfgUrl);
   const { kind, kc } = useKind(cfg);
   const [sp, setSp] = useSearchParams();
   const [entry, setEntry] = useState(null);
@@ -312,7 +313,7 @@ export default function MarksEntry() {
 
             <Link
               className="btn btn-secondary btn-sm"
-              to={`/marks/${kind}/upload?grade=${encodeURIComponent(grade)}&section=${section}&number=${number}`}
+              to={`${base}/${kind}/upload?grade=${encodeURIComponent(grade)}&section=${section}&number=${number}`}
             >
               Upload CSV instead
             </Link>
