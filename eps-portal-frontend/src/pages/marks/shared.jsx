@@ -14,13 +14,38 @@ export function useKind(cfg) {
   return { kind, kc: cfg?.kinds?.[kind] };
 }
 
-export function KindTabs({ kind, isAdmin }) {
+// Marks pages work for both Primary (/marks/...) and EY (/ey/...).
+export function useLevel() {
   const { pathname } = useLocation();
-  const links = [['', 'Overview'], ['/entry', 'Enter marks'], ['/upload', 'Upload CSV'], ['/analytics', 'Grade analytics'], ...(isAdmin ? [['/cross-grade', 'Cross-grade']] : [])];
+  const ey = pathname.toLowerCase().startsWith('/ey');
+  return {
+    ey,
+    base: ey ? '/ey' : '/marks',
+    cfgUrl: ey ? '/marks/config?level=ey' : '/marks/config',
+  };
+}
+
+export function KindTabs({ kind, isAdmin }) {
+  const { ey, base } = useLevel();
+  const { pathname } = useLocation();
+  const links = [
+    ['', 'Overview'],
+    ['/entry', 'Enter marks'],
+    ['/upload', 'Upload CSV'],
+    ['/analytics', 'Grade analytics'],
+    ...(isAdmin && !ey ? [['/cross-grade', 'Cross-grade']] : []),
+  ];
   return (
     <div className="tab-bar" style={{ flexWrap: 'wrap' }}>
       {links.map(([path, label]) => (
-        <Link key={path} to={`/marks/${kind}${path}`} className={`tab-btn ${pathname.replace(/\/$/, '').toLowerCase() === `/marks/${kind}${path}`.toLowerCase() ? 'active' : ''}`} style={{ textDecoration: 'none' }}>{label}</Link>
+        <Link
+          key={path}
+          to={`${base}/${kind}${path}`}
+          className={`tab-btn ${pathname.replace(/\/$/, '').toLowerCase() === `${base}/${kind}${path}`.toLowerCase() ? 'active' : ''}`}
+          style={{ textDecoration: 'none' }}
+        >
+          {label}
+        </Link>
       ))}
     </div>
   );
