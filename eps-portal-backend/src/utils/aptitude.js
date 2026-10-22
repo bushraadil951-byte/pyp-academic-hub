@@ -6,14 +6,20 @@ import { collapseStrands } from './marksMath.js';
 
 const pct = (m, max) => (max > 0 ? Math.round((m / max) * 1000) / 10 : null);
 
-// sheets: lean MarkSheet docs (any kind) for the academic year; studentIds: array of id strings
+// Early Years (Nursery, KG-1, KG-2): FA and SA only, 50% each, no DT.
+export const EY_APTITUDE_STRANDS = Object.fromEntries(
+  Object.entries(APTITUDE_STRANDS).map(([strand, cfg]) => [strand, { ...cfg, weightFa: 0.5, weightDt: 0, weightSa: 0.5 }])
+);
+
+// sheets: lean MarkSheet docs (any kind) for the academic year; studentIds: array of id strings; ey: use EY weights
 // -> { [studentId]: { [strand]: { score, faScore, dtScore, saScore, hasData } } }
-export function computeAptitude({ sheets, studentIds }) {
+export function computeAptitude({ sheets, studentIds, ey = false }) {
+  const strandCfg = ey ? EY_APTITUDE_STRANDS : APTITUDE_STRANDS;
   const ids = new Set(studentIds);
   // collected[studentId][strand] = { FA: [], DT: [], SA: [] }
   const collected = {};
   const strandsBySubject = {};
-  for (const [strand, cfg] of Object.entries(APTITUDE_STRANDS)) for (const s of cfg.subjects) (strandsBySubject[s] ??= []).push(strand);
+  for (const [strand, cfg] of Object.entries(strandCfg)) for (const s of cfg.subjects) (strandsBySubject[s] ??= []).push(strand);
 
   // FA/SA strand sheets are merged into one subject-level mark first (needs kind, number, subject, section, strand, maxMarks, marks)
   for (const sh of collapseStrands(sheets)) {
@@ -31,7 +37,7 @@ export function computeAptitude({ sheets, studentIds }) {
   const out = {};
   for (const sid of studentIds) {
     out[sid] = {};
-    for (const [strand, cfg] of Object.entries(APTITUDE_STRANDS)) {
+    for (const [strand, cfg] of Object.entries(strandCfg)) {
       const c = collected[sid]?.[strand] || { FA: [], DT: [], SA: [] };
       const faScore = c.FA.length ? safeAvg(c.FA) : null;
       const dtScore = c.DT.length ? safeAvg(c.DT) : null;
