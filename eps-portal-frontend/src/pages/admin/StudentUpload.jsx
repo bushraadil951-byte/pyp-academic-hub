@@ -16,7 +16,11 @@ export default function StudentUpload() {
   const [busy, setBusy] = useState(false);
 
   const template = () => downloadCsv('students_template.csv', [
-    ['name', 'username', 'password', 'grade', 'section', 'email'], ['Ahmed Khan', 'ahmed_01', 'ahm@01', 'Grade 3', 'A', 'parent@example.com'], ['Sara Ali', '', '', 'Grade 4', 'B', '']]);
+  ['name', 'username', 'password', 'grade', 'section', 'email'],
+  ['Ahmed Khan', 'ahmed_01', 'ahm@01', 'Grade 3', 'A', 'parent@example.com'],
+  ['Sara Ali', '', '', 'Grade 4', 'B', ''],
+  ['Zayn Malik', '', '', 'Nursery', 'A', ''],
+  ['Ayesha Noor', '', '', 'KG-1', 'B', '']]);
 
   const check = async (list) => {
     setBusy(true);
@@ -58,8 +62,8 @@ export default function StudentUpload() {
 
       <div className="card" style={{ marginBottom: 16 }}>
         <p className="sec-sub" style={{ marginBottom: 10 }}>
-          Columns: <code>name, username, password, grade, section, email</code>. Only <strong>name</strong> and <strong>grade</strong> are required. <strong>email</strong> is the parent or guardian address used for password reset codes. Every student must choose a new password the first time they sign in.
-          Empty usernames become <code>firstname_g3</code>; empty passwords become <code>EPS@Ahm3</code>-style defaults (up to 500 students per file).
+          Columns: <code>name, username, password, grade, section, email</code>. Only <strong>name</strong> and <strong>grade</strong> are required. Grade can be <code>Nursery</code>, <code>KG-1</code>, <code>KG-2</code> or <code>Grade 1</code> to <code>Grade 5</code> (a plain number such as <code>3</code> also works). <strong>email</strong> is the parent or guardian address used for password reset codes. Every student must choose a new password the first time they sign in.
+          Empty usernames become <code>firstname_g3</code> (or <code>firstname_nur</code> and <code>firstname_kg1</code> for EY); empty passwords become <code>EPS@Ahm3</code>-style defaults (up to 500 students per file).
         </p>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-secondary btn-sm" onClick={template}>Download template</button>
