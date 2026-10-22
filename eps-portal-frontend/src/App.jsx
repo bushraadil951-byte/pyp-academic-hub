@@ -22,6 +22,7 @@ import MarksEntry from './pages/marks/MarksEntry.jsx';
 import MarksUpload from './pages/marks/MarksUpload.jsx';
 import MarksAnalytics from './pages/marks/MarksAnalytics.jsx';
 import MarksCross from './pages/marks/MarksCross.jsx';
+import EyHub from './pages/ey/EyHub.jsx';
 import IbDashboard from './pages/profile/IbDashboard.jsx';
 import IbLearnerProfile from './pages/profile/IbLearnerProfile.jsx';
 import IbAtl from './pages/profile/IbAtl.jsx';
@@ -69,6 +70,11 @@ export default function App() {
     ['/marks/:kind/upload', [ADMIN, TEACHER], 'Upload Marks', <MarksUpload />, '/marks'],
     ['/marks/:kind/analytics', [ADMIN, TEACHER], 'Grade Analytics', <MarksAnalytics />, '/marks'],
     ['/marks/:kind/cross-grade', [ADMIN], 'Cross-grade Analytics', <MarksCross />, '/marks'],
+    ['/ey', [ADMIN, TEACHER], 'EY — Early Years', <EyHub />],
+    ['/ey/:kind', [ADMIN, TEACHER], 'EY Assessments', <MarksHome />, '/ey'],
+    ['/ey/:kind/entry', [ADMIN, TEACHER], 'Enter Marks', <MarksEntry />, '/ey'],
+    ['/ey/:kind/upload', [ADMIN, TEACHER], 'Upload Marks', <MarksUpload />, '/ey'],
+    ['/ey/:kind/analytics', [ADMIN, TEACHER], 'Grade Analytics', <MarksAnalytics />, '/ey'],
     ['/ib', [ADMIN, TEACHER], 'IB Profile Development', <IbDashboard />],
     ['/ib/learner-profile', [ADMIN, TEACHER], 'Learner Profile', <IbLearnerProfile />, '/ib'],
     ['/ib/atl', [ADMIN, TEACHER], 'ATL Skills', <IbAtl />, '/ib'],
