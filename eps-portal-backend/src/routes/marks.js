@@ -139,8 +139,10 @@ router.get('/hub', staff, wrap(async (req, res) => {
 }));
 
 router.get('/:kind/dashboard', staff, wrap(async (req, res) => {
+  const ey = req.query.level === 'ey';
+  const levelGrades = ey ? EY_GRADES : MARK_GRADES;
   const locked = await lockedGrade(req);
-  const grades = locked ? [locked] : MARK_GRADES;
+  const grades = locked ? levelGrades.filter((g) => g === locked) : levelGrades;
   const sheets = await MarkSheet.find({ kind: req.kind, academicYear: ACADEMIC_YEAR, grade: { $in: grades } }).select('marks.student').lean();
   const counts = await Promise.all(grades.map((g) => User.countDocuments({ role: ROLES.STUDENT, grade: g })));
   res.json({
@@ -149,7 +151,6 @@ router.get('/:kind/dashboard', staff, wrap(async (req, res) => {
     grades: grades.map((g, i) => ({ grade: g, studentCount: counts[i] })),
   });
 }));
-
 // ── Entry (one subject + number + grade/section) ────────────────────────────
 // Strand subjects (FA/SA English, Hindi, Urdu, Maths) are entered strand by strand: each strand has its own
 // maximum marks and its own column.
