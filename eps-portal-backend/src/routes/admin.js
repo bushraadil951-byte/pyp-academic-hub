@@ -9,6 +9,8 @@ import { scoreAttempt } from '../utils/scoring.js';
 import { HttpError, bad, cleanEmail, notFound, oid, safeAvg, str, wrap } from '../utils/helpers.js';
 
 const DT_GRADES = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'];
+const EY_GRADES = ['Nursery', 'KG-1', 'KG-2'];
+const STUDENT_GRADES = [...EY_GRADES, ...DT_GRADES];
 const SUBJECTS = ['English', 'Mathematics', 'Science', 'Reasoning'];
 const MAX_IMAGE_CHARS = 2.8e6; // ~2 MB of binary once base64-encoded
 
@@ -63,7 +65,7 @@ function peopleRoutes(role) {
   r.post('/', wrap(async (req, res) => {
     const name = str(req.body.name), username = str(req.body.username), password = str(req.body.password);
     const grade = str(req.body.grade) || null;
-    if (!name || !username || !password) throw bad('Name, username and password are required.');
+    if (isStudent && !STUDENT_GRADES.includes(grade)) throw bad('Choose a grade.');
     if (isStudent && !DT_GRADES.includes(grade)) throw bad('Choose a grade.');
     if (await User.exists({ username })) throw new HttpError(409, 'Username already exists.');
 
