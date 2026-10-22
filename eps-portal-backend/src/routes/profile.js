@@ -11,11 +11,12 @@ import {
   APTITUDE_STRANDS, ATL_DESCRIPTORS, ATL_SKILLS, ISP_ATTRIBUTES, ISP_PROFILE, LEARNER_PROFILE, LP_ATTRIBUTES,
   RATING_COLORS, RATING_SCALE, TERMS,
 } from '../utils/profileData.js';
-import { computeAptitude } from '../utils/aptitude.js';
+import { computeAptitude, EY_APTITUDE_STRANDS } from '../utils/aptitude.js';
 
 const router = Router();
 const staff = requireAuth(ROLES.TEACHER, ROLES.ADMIN);
 const student = requireAuth(ROLES.STUDENT);
+const EY_GRADES = ['Nursery', 'KG-1', 'KG-2'];
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 const getTeacherAccess = async (req) => {
@@ -49,7 +50,7 @@ async function visibleStudents(req) {
   const acc = await getTeacherAccess(req);
   const grade = acc?.viewGrade || str(req.query.grade) || null;
   const section = acc?.viewSection || str(req.query.section) || null;
-  const rows = await User.find({ role: ROLES.STUDENT, ...(grade ? { grade } : {}), ...(section ? { section } : {}) }).sort({ grade: 1, section: 1, name: 1 }).lean();
+  const rows = await User.find({ role: ROLES.STUDENT, ...(grade ? { grade } : { grade: { $nin: EY_GRADES } }), ...(section ? { section } : {}) }).sort({ grade: 1, section: 1, name: 1 }).lean();
   return { rows, grade, section, locked: acc?.viewGrade || null };
 }
 
@@ -76,12 +77,17 @@ const mapBy = (rows, key, val) => Object.fromEntries(rows.map((r) => [r[key], va
 
 // ── Config (constants) ──────────────────────────────────────────────────────
 router.get('/config', requireAuth(), wrap(async (req, res) => {
-  const locked = req.user.role === ROLES.STUDENT ? null : await lockedGrade(req);
+  const ey = req.query.level === 'ey';
+  const levelGrades = ey ? EY_GRADES : MARK_GRADES;
+  const acc = req.user.role === ROLES.STUDENT ? null : await getTeacherAccess(req);
+  const locked = acc?.viewGrade || null;
+  const vs = acc?.viewSection || null;
   res.json({
     academicYear: ACADEMIC_YEAR, terms: TERMS, ratingScale: RATING_SCALE, ratingColors: RATING_COLORS,
     learnerProfile: LEARNER_PROFILE, ispProfile: ISP_PROFILE, atlSkills: ATL_SKILLS, atlDescriptors: ATL_DESCRIPTORS,
     strands: Object.keys(APTITUDE_STRANDS),
-    grades: locked ? [locked] : MARK_GRADES, gradeLocked: !!locked, sections: MARK_SECTIONS, isAdmin: req.user.role === ROLES.ADMIN,
+    grades: locked ? levelGrades.filter((g) => g === locked) : levelGrades, gradeLocked: !!locked,
+    sections: vs ? [vs] : MARK_SECTIONS, sectionLocked: !!vs, isAdmin: req.user.role === ROLES.ADMIN,
   });
 }));
 
@@ -331,13 +337,16 @@ router.put('/student/isp', student, wrap(async (req, res) => {
 
 // ═══ Aptitude ═══════════════════════════════════════════════════════════════
 router.get('/aptitude', staff, wrap(async (req, res) => {
-  const locked = await lockedGrade(req);
-  const grade = locked || str(req.query.grade) || MARK_GRADES[0];
-  if (!MARK_GRADES.includes(grade)) throw bad('Choose a valid grade.');
-  const section = str(req.query.section) || null;
+  const ey = req.query.level === 'ey';
+  const levelGrades = ey ? EY_GRADES : MARK_GRADES;
+  const acc = await getTeacherAccess(req);
+  const locked = acc?.viewGrade || null;
+  const grade = locked || str(req.query.grade) || levelGrades[0];
+  if (!levelGrades.includes(grade)) throw bad('Choose a valid grade.');
+  const section = acc?.viewSection || str(req.query.section) || null;
   const students = await User.find({ role: ROLES.STUDENT, grade, ...(section ? { section } : {}) }).sort({ name: 1 }).lean();
   const sheets = await MarkSheet.find({ academicYear: ACADEMIC_YEAR, grade }).select('kind number subject strand section grade academicYear maxMarks marks.student marks.marks').lean();
-  const apt = computeAptitude({ sheets, studentIds: students.map((s) => String(s._id)) });
+  const apt = computeAptitude({ sheets, studentIds: students.map((s) => String(s._id)), ey });
   const strands = Object.keys(APTITUDE_STRANDS);
   res.json({
     grade, section: section || '', academicYear: ACADEMIC_YEAR, strands,
@@ -348,9 +357,10 @@ router.get('/aptitude', staff, wrap(async (req, res) => {
 
 router.get('/student/aptitude', student, wrap(async (req, res) => {
   const me = await User.findById(req.user.id);
+  const ey = EY_GRADES.includes(me.grade);
   const sheets = await MarkSheet.find({ academicYear: ACADEMIC_YEAR, grade: me.grade, 'marks.student': me._id }).select('kind number subject strand section grade academicYear maxMarks marks.student marks.marks').lean();
-  const apt = computeAptitude({ sheets, studentIds: [String(me._id)] })[String(me._id)];
-  res.json({ student: person(me), academicYear: ACADEMIC_YEAR, strands: Object.keys(APTITUDE_STRANDS), aptitude: apt, weights: APTITUDE_STRANDS });
+  const apt = computeAptitude({ sheets, studentIds: [String(me._id)], ey })[String(me._id)];
+  res.json({ student: person(me), academicYear: ACADEMIC_YEAR, strands: Object.keys(APTITUDE_STRANDS), aptitude: apt, weights: ey ? EY_APTITUDE_STRANDS : APTITUDE_STRANDS });
 }));
 
 export default router;
