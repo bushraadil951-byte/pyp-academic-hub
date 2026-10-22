@@ -1,4 +1,3 @@
-```jsx
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
@@ -6,15 +5,15 @@ import { useFlash } from '../../flash.jsx';
 import { useFetch } from '../../components/useFetch.js';
 import { Empty, Field, Loading } from '../../components/ui.jsx';
 import { KindTabs, Pct, useKind, useLevel } from './shared.jsx';
-import { UOI_BY_ASSESSMENT, subjectLabel, EY_GRADES, EY_NO_HINDI, EY_UOI } from '../../constants.js';
+import { EY_GRADES, EY_NO_HINDI, EY_UOI, UOI_BY_ASSESSMENT, subjectLabel } from '../../constants.js';
 
 const DEFAULT_STRAND_MAX = 10;
 
 // Science is stored as "Science" but displayed as "UOI".
 // For other subjects, the backend remains the source of strand options.
-const strandOptions = (subject, type, number, availableStrands = [],grade = '') => {
+const strandOptions = (subject, type, number, availableStrands = [], grade = '') => {
   if (subject === 'Science') {
-    if (EY_GRADES.includes(grade)) return EY_UOI;
+    if (EY_GRADES.includes(grade)) return EY_UOI;           // Nursery, KG-1, KG-2: UOI-1 to UOI-4
     if (type === 'SA') return UOI_BY_ASSESSMENT.SA[number] || [];
     if (type === 'FA') return UOI_BY_ASSESSMENT.FA;
     return []; // DT has no strands.
@@ -40,7 +39,7 @@ export default function MarksEntry() {
     ? (cfg.gradeLocked ? cfg.grades[0] : sp.get('grade') || cfg.grades[0])
     : '';
 
-  const section = sp.get('section') || '';
+  const section = cfg?.sectionLocked ? cfg.sections[0] : sp.get('section') || '';
   const subject = sp.get('subject') || kc?.subjects[0] || '';
   const number = Number(sp.get('number') || kc?.numbers[0] || 1);
 
@@ -50,12 +49,15 @@ export default function MarksEntry() {
     else n.delete(k);
     setSp(n, { replace: true });
   };
+
+  // Hindi is not taught in Nursery and KG-1: jump to another subject.
   useEffect(() => {
     if (kc && subject === 'Hindi' && EY_NO_HINDI.includes(grade)) {
       setFilter('subject', kc.subjects.find((s) => s !== 'Hindi') || '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kc, subject, grade]);
+
   useEffect(() => {
     if (!cfg || !kc) return undefined;
 
@@ -73,20 +75,9 @@ export default function MarksEntry() {
       if (!live) return;
 
       // Keep the backend's strand configuration for other subjects.
-      // For Science, show only the UOI strands for this assessment.
+      // For Science, show only the UOI strands for this assessment / grade.
       const availableStrands = Array.isArray(d.strands) ? d.strands : [];
-      const selectedStrands = strandOptions(
-        subject,
-        kind,
-        number,
-        availableStrands,
-        grade
-      );
-
-      // Intersect with backend options when they are provided.
-      // If Science options are missing, use the configured UOI options;
-      // the backend must still be configured to accept these strands.
-      const activeStrands = selectedStrands;
+      const activeStrands = strandOptions(subject, kind, number, availableStrands, grade);
 
       const normalized = {
         ...d,
@@ -152,6 +143,7 @@ export default function MarksEntry() {
   if (!kc) return <div className="alert alert-error">Unknown assessment type.</div>;
 
   const strands = entry?.strands || null;
+  const isUoi = subject === 'Science';
 
   const setRow = (id, patch) =>
     setRows((r) => ({ ...r, [id]: { ...r[id], ...patch } }));
@@ -257,6 +249,15 @@ export default function MarksEntry() {
     </Field>
   );
 
+  const subjectOptions = kc.subjects
+    .filter((s) => !(s === 'Hindi' && EY_NO_HINDI.includes(grade)))
+    .map((s) => [s, subjectLabel(s)]);
+
+  const sectionOptions = [
+    ...(cfg.sectionLocked ? [] : [['', 'All sections']]),
+    ...cfg.sections.map((s) => [s, s]),
+  ];
+
   return (
     <>
       <KindTabs kind={kind} isAdmin={cfg.isAdmin} />
@@ -278,15 +279,16 @@ export default function MarksEntry() {
             'Section',
             section,
             (v) => setFilter('section', v),
-            [['', 'All sections'], ...cfg.sections.map((s) => [s, s])]
+            sectionOptions,
+            cfg.sectionLocked
           )}
 
           {select(
             'Subject',
             subject,
             (v) => setFilter('subject', v),
-            kc.subjects.filter((s) => !(s === 'Hindi' && EY_NO_HINDI.includes(grade))).map((s) => [s, subjectLabel(s)])
-          }
+            subjectOptions
+          )}
 
           {select(
             `${kind} number`,
@@ -387,7 +389,7 @@ export default function MarksEntry() {
                           type="number"
                           min="1"
                           step="any"
-                          required
+                          required={!isUoi}
                           aria-label={`Maximum marks for ${st}`}
                           value={maxBy[st] ?? ''}
                           onChange={(e) =>
@@ -557,4 +559,3 @@ export default function MarksEntry() {
     </>
   );
 }
-```
