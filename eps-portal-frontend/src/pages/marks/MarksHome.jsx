@@ -1,19 +1,20 @@
 import { Link } from 'react-router-dom';
 import { useFetch } from '../../components/useFetch.js';
 import { Loading, Stat } from '../../components/ui.jsx';
-import { KindTabs, useKind } from './shared.jsx';
+import { KindTabs, useKind, useLevel } from './shared.jsx';
 
 export default function MarksHome() {
-  const { data: cfg } = useFetch('/marks/config');
+  const { ey, base, cfgUrl } = useLevel();
+  const { data: cfg } = useFetch(cfgUrl);
   const { kind } = useKind(cfg);
-  const { data: d, loading, error } = useFetch(`/marks/${kind.toLowerCase()}/dashboard`);
+  const { data: d, loading, error } = useFetch(`/marks/${kind.toLowerCase()}/dashboard${ey ? '?level=ey' : ''}`);
   if (loading || !cfg) return <Loading />;
   if (error) return <div className="alert alert-error">{error.message}</div>;
   return (
     <>
       <KindTabs kind={kind} isAdmin={cfg.isAdmin} />
       <div className="sec-header"><div><div className="sec-title">{d.label}</div><div className="sec-sub">Academic year {d.academicYear}{cfg.gradeLocked ? ` · ${cfg.grades[0]}` : ''}</div></div>
-        <Link to="/marks" className="btn btn-secondary btn-sm">All assessment types</Link></div>
+        <Link to={base} className="btn btn-secondary btn-sm">{ey ? 'EY home' : 'All assessment types'}</Link></div>
       <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', width: '100%' }}>
         <Stat icon="🗂️" bg="#eef2ff" value={d.totalSheets} label="Mark sheets" />
         <Stat icon="✍️" bg="#ecfdf5" value={d.totalMarks} label="Marks entered" />
@@ -26,8 +27,8 @@ export default function MarksHome() {
           <tbody>{d.grades.map((g) => (
             <tr key={g.grade}><td style={{ fontWeight: 500 }}>{g.grade}</td><td>{g.studentCount}</td>
               <td style={{ textAlign: 'right' }}>
-                <Link className="btn btn-secondary btn-xs" to={`/marks/${kind}/entry?grade=${encodeURIComponent(g.grade)}`}>Enter marks</Link>{' '}
-                <Link className="btn btn-secondary btn-xs" to={`/marks/${kind}/analytics?grade=${encodeURIComponent(g.grade)}`}>Analytics</Link>
+                <Link className="btn btn-secondary btn-xs" to={`${base}/${kind}/entry?grade=${encodeURIComponent(g.grade)}`}>Enter marks</Link>{' '}
+                <Link className="btn btn-secondary btn-xs" to={`${base}/${kind}/analytics?grade=${encodeURIComponent(g.grade)}`}>Analytics</Link>
               </td></tr>))}
           </tbody>
         </table></div>
