@@ -66,7 +66,7 @@ function peopleRoutes(role) {
     const name = str(req.body.name), username = str(req.body.username), password = str(req.body.password);
     const grade = str(req.body.grade) || null;
     if (isStudent && !STUDENT_GRADES.includes(grade)) throw bad('Choose a grade.');
-    if (isStudent && !DT_GRADES.includes(grade)) throw bad('Choose a grade.');
+    // (removed: if (isStudent && !DT_GRADES.includes(grade)) ...)
     if (await User.exists({ username })) throw new HttpError(409, 'Username already exists.');
 
     const user = await User.create({
