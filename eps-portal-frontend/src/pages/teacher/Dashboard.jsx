@@ -11,8 +11,8 @@ export default function TeacherDashboard() {
     <>
 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Badge tone="purple">👁️ Viewing: {d.grade}{d.section && d.section !== 'All sections' ? ` - Sec ${d.section}` : ''}</Badge>
-          <Badge tone="blue">✏️ Editing: {d.access?.editGrade || 'All grades'}{d.access?.editSection ? ` - Sec ${d.access.editSection}` : ''}</Badge>
+          <Badge tone="purple">👁️ Viewing: {d.access.viewText}</Badge>
+          <Badge tone="blue">✏️ Editing: {d.access.editText}</Badge>
         </div>
         <Link to="/portal" className="btn btn-secondary btn-sm">🏠 Portal Home</Link>
       </div>
