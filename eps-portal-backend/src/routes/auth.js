@@ -8,7 +8,8 @@ import { rulesOf } from '../utils/teacherAccess.js';
 
 const router = Router();
 export const publicUser = (u) => ({
-  id: u.id, name: u.name, role: u.role, grade: u.grade ?? null, viewGrades: u.role === 'teacher' ? [...new Set(rulesOf(u).map((r) => r.grade))] : [],,
+  id: u.id, name: u.name, role: u.role, grade: u.grade ?? null,
+  viewGrades: u.role === 'teacher' ? [...new Set(rulesOf(u).map((r) => r.grade))] : [],
   email: u.email ?? null, mustChange: !!u.mustChangePassword,
 });
 
