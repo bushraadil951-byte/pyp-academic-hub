@@ -7,7 +7,8 @@ import { HttpError, str, wrap } from '../utils/helpers.js';
 
 const router = Router();
 export const publicUser = (u) => ({
-  id: u.id, name: u.name, role: u.role, grade: u.grade ?? null, email: u.email ?? null, mustChange: !!u.mustChangePassword,
+  id: u.id, name: u.name, role: u.role, grade: u.grade ?? null, viewGrade: u.viewGrade ?? null,
+  email: u.email ?? null, mustChange: !!u.mustChangePassword,
 });
 
 // 10 attempts per 15 minutes per IP; the old Flask login had no throttle.
