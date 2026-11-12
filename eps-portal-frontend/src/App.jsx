@@ -66,7 +66,7 @@ export default function App() {
     ['/teacher/students', [TEACHER], 'Students', <TeacherStudents />, '/teacher'],
     ['/marks', [ADMIN, TEACHER], 'Marks & Assessments', <MarksHub />],
     ['/marks/:kind', [ADMIN, TEACHER], 'Marks & Assessments', <MarksHome />, '/marks'],
-    ['/marks/:kind/entry', [ADMIN, TEACHER], 'Enter Marks', <MarksEntry />, '/marks'],
+    ['/marks/:kind/entry', [ADMIN, TEACHER], 'Enter Marks', <MarksEntry />, '/portal'],
     ['/marks/:kind/upload', [ADMIN, TEACHER], 'Upload Marks', <MarksUpload />, '/marks'],
     ['/marks/:kind/analytics', [ADMIN, TEACHER], 'Grade Analytics', <MarksAnalytics />, '/marks'],
     ['/marks/:kind/cross-grade', [ADMIN], 'Cross-grade Analytics', <MarksCross />, '/marks'],
