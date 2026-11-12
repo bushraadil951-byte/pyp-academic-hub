@@ -7,6 +7,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { bad, notFound, str, wrap } from '../utils/helpers.js';
 import { collapseStrands, computeCrossGrade, computeGradeAnalytics, computeStudentSeries } from '../utils/marksMath.js';
 import { computeStrandAnalytics, computeStudentStrands } from '../utils/strandMath.js';
+import { assertViewGrade, canEditSlot, loadAccess, sectionQuery, uiScope, viewGrades } from '../utils/teacherAccess.js';
 
 const router = Router();
 const staff = requireAuth(ROLES.TEACHER, ROLES.ADMIN);
@@ -18,36 +19,11 @@ const isEy = (g) => EY_GRADES.includes(g);
 const ALL_GRADES = [...MARK_GRADES, ...EY_GRADES];   // MARK_GRADES stays primary-only: do not add EY to config.js
 
 // Teacher access points helper (viewing vs editing)
-// Safe teacher access helper
-const getTeacherAccess = async (req) => {
-  if (req.user?.role !== ROLES.TEACHER) return null;
-  const u = await User.findById(req.user.id).select('grade section viewGrade viewSection editSection');
-  return {
-    viewGrade: u?.viewGrade || null,
-    viewSection: u?.viewSection || null,
-    editGrade: u?.grade || null,
-    editSection: u?.editSection || null,
-  };
-};
-
-const lockedGrade = async (req) => {
-  if (req.user?.role !== ROLES.TEACHER) return null;
-  const acc = await getTeacherAccess(req);
-  return acc?.viewGrade || null;
-};
-const lockedSection = async (req) => {
-  if (req.user?.role !== ROLES.TEACHER) return null;
-  const acc = await getTeacherAccess(req);
-  return acc?.viewSection || acc?.editSection || null;
-};
-
+const teacherAcc = async (req) => (req.user?.role === ROLES.TEACHER ? loadAccess(req.user.id) : null);
 const checkEditPerm = async (req, grade, section) => {
-  if (req.user?.role !== ROLES.TEACHER) return;
-  const acc = await getTeacherAccess(req);
-  if (!acc || !acc.editGrade) throw bad('You have view-only access. Ask an admin for editing access.');
-  if (grade !== acc.editGrade) throw bad(`You only have permission to edit marks for ${acc.editGrade}.`);
-  if (acc.editSection && section !== acc.editSection) {
-    throw bad(`You only have permission to edit marks for section ${acc.editSection}.`);
+  const acc = await teacherAcc(req);
+  if (acc && !canEditSlot(acc, grade, section)) {
+    throw bad(section ? `You do not have editing access for ${grade} section ${section}.` : `You do not have editing access for all of ${grade}: choose one of your sections.`);
   }
 };
 router.param('kind', (req, _res, next, raw) => {
@@ -120,21 +96,14 @@ const parseValue = (v, max) => {
 router.get('/config', staff, wrap(async (req, res) => {
   const ey = req.query.level === 'ey';
   const levelGrades = ey ? EY_GRADES : MARK_GRADES;
-  const locked = await lockedGrade(req);
-  const grades = locked ? (levelGrades.includes(locked) ? [locked] : []) : levelGrades;
+  const scope = uiScope(await teacherAcc(req), levelGrades, MARK_SECTIONS);
   const kinds = Object.entries(MARK_KINDS).filter(([k]) => !ey || k !== 'DT');
-  res.json({ academicYear: ACADEMIC_YEAR, kinds: Object.fromEntries(kinds.map(([k, c]) => [k, { ...c, strands: c.strands || {}, columns: columnsFor(c) }])), grades, gradeLocked: !!locked, sections: MARK_SECTIONS, isAdmin: req.user.role === ROLES.ADMIN });
-}));
-
-// ── Config and hub ──────────────────────────────────────────────────────────
-router.get('/config', staff, wrap(async (req, res) => {
-  const locked = await lockedGrade(req);
-  res.json({ academicYear: ACADEMIC_YEAR, kinds: Object.fromEntries(Object.entries(MARK_KINDS).map(([k, c]) => [k, { ...c, strands: c.strands || {}, columns: columnsFor(c) }])), grades: locked ? [locked] : MARK_GRADES, gradeLocked: !!locked, sections: MARK_SECTIONS, isAdmin: req.user.role === ROLES.ADMIN });
+  res.json({ academicYear: ACADEMIC_YEAR, kinds: Object.fromEntries(kinds.map(([k, c]) => [k, { ...c, strands: c.strands || {}, columns: columnsFor(c) }])), ...scope, isAdmin: req.user.role === ROLES.ADMIN });
 }));
 
 router.get('/hub', staff, wrap(async (req, res) => {
-  const locked = await lockedGrade(req);
-  const sheets = await MarkSheet.find({ academicYear: ACADEMIC_YEAR, ...(locked ? { grade: locked } : {}) }).select('kind marks.student').lean();
+  const acc = await teacherAcc(req);
+  const sheets = await MarkSheet.find({ academicYear: ACADEMIC_YEAR, ...(acc ? { grade: { $in: viewGrades(acc, MARK_GRADES) } } : {}) }).select('kind marks.student').lean();
   res.json(Object.entries(MARK_KINDS).map(([kind, cfg]) => {
     const mine = sheets.filter((s) => s.kind === kind);
     return { kind, label: cfg.label, totalSheets: mine.length, totalMarks: mine.reduce((n, s) => n + s.marks.length, 0) };
