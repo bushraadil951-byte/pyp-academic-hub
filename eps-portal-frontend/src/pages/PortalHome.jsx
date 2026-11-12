@@ -6,7 +6,7 @@ import './portal.css';
 export default function PortalHome() {
   const { user } = useAuth();
   const isEyStudent = user.role === 'student' && EY_GRADES.includes(user.grade);
-  const isEyTeacher = user.role === 'teacher' && [user.viewGrade, user.grade].some((g) => EY_GRADES.includes(g));
+  const isEyTeacher = user.role === 'teacher' && (user.viewGrades || []).some((g) => EY_GRADES.includes(g));
   const modules = isEyStudent
     ? EY_STUDENT_MODULES
     : (PORTAL_MODULES[user.role] || []).filter((m) => m.key !== 'ey' || user.role !== 'teacher' || isEyTeacher);
