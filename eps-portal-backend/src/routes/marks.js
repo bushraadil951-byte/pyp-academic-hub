@@ -18,7 +18,7 @@ const EY_UOI = ['UOI-1', 'UOI-2', 'UOI-3', 'UOI-4'];
 const isEy = (g) => EY_GRADES.includes(g);
 const ALL_GRADES = [...MARK_GRADES, ...EY_GRADES];   // MARK_GRADES stays primary-only: do not add EY to config.js
 
-// Teacher access points helper (viewing vs editing)
+// Teacher access (rules built in utils/teacherAccess.js). Admins: acc is null, nothing is restricted.
 const teacherAcc = async (req) => (req.user?.role === ROLES.TEACHER ? loadAccess(req.user.id) : null);
 const checkEditPerm = async (req, grade, section) => {
   const acc = await teacherAcc(req);
@@ -103,7 +103,7 @@ router.get('/config', staff, wrap(async (req, res) => {
 
 router.get('/hub', staff, wrap(async (req, res) => {
   const acc = await teacherAcc(req);
-  const sheets = await MarkSheet.find({ academicYear: ACADEMIC_YEAR, ...(acc ? { grade: { $in: viewGrades(acc, MARK_GRADES) } } : {}) }).select('kind marks.student').lean();
+  const sheets = await MarkSheet.find({ academicYear: ACADEMIC_YEAR, ...(acc ? { grade: { $in: viewGrades(acc) } } : {}) }).select('kind marks.student').lean();
   res.json(Object.entries(MARK_KINDS).map(([kind, cfg]) => {
     const mine = sheets.filter((s) => s.kind === kind);
     return { kind, label: cfg.label, totalSheets: mine.length, totalMarks: mine.reduce((n, s) => n + s.marks.length, 0) };
@@ -113,10 +113,10 @@ router.get('/hub', staff, wrap(async (req, res) => {
 router.get('/:kind/dashboard', staff, wrap(async (req, res) => {
   const ey = req.query.level === 'ey';
   const levelGrades = ey ? EY_GRADES : MARK_GRADES;
-  const locked = await lockedGrade(req);
-  const grades = locked ? levelGrades.filter((g) => g === locked) : levelGrades;
+  const acc = await teacherAcc(req);
+  const grades = acc ? levelGrades.filter((g) => viewGrades(acc).includes(g)) : levelGrades;
   const sheets = await MarkSheet.find({ kind: req.kind, academicYear: ACADEMIC_YEAR, grade: { $in: grades } }).select('marks.student').lean();
-  const counts = await Promise.all(grades.map((g) => User.countDocuments({ role: ROLES.STUDENT, grade: g })));
+  const counts = await Promise.all(grades.map((g) => User.countDocuments({ role: ROLES.STUDENT, grade: g, ...sectionQuery(acc, g, null) })));
   res.json({
     label: req.cfg.label, academicYear: ACADEMIC_YEAR, numbers: req.cfg.numbers,
     totalSheets: sheets.length, totalMarks: sheets.reduce((n, s) => n + s.marks.length, 0), totalStudents: counts.reduce((a, b) => a + b, 0),
@@ -127,13 +127,15 @@ router.get('/:kind/dashboard', staff, wrap(async (req, res) => {
 // Strand subjects (FA/SA English, Hindi, Urdu, Maths) are entered strand by strand: each strand has its own
 // maximum marks and its own column.
 router.get('/:kind/entry', staff, wrap(async (req, res) => {
-  const locked = await lockedGrade(req);
-  const defaultGrade = locked || req.query.grade || MARK_GRADES[0];
+  const acc = await teacherAcc(req);
+  const defaultGrade = req.query.grade || (acc ? viewGrades(acc)[0] : null) || MARK_GRADES[0];
+  assertViewGrade(acc, defaultGrade);
   const defaultSub = req.query.subject || req.cfg?.subjects?.[0] || 'English';
   const defaultNum = Number(req.query.number || req.cfg?.numbers?.[0] || 1);
-  const s = slot(req, { ...req.query, grade: defaultGrade, section: (await lockedSection(req)) || req.query.section, subject: defaultSub, number: defaultNum });
+  const s = slot(req, { ...req.query, grade: defaultGrade, subject: defaultSub, number: defaultNum });
   const strands = strandsOf(req, s.subject, s.grade);
-  const [students, sheets] = await Promise.all([studentsOf(s.grade, s.section), findSheets(s, strands)]);
+  const secFilter = sectionQuery(acc, s.grade, s.section).section;
+  const [students, sheets] = await Promise.all([studentsOf(s.grade, secFilter), findSheets(s, strands)]);
   const slotOut = { grade: s.grade, section: s.section || '', subject: s.subject, number: s.number };
 
   if (!strands) {
@@ -159,8 +161,7 @@ router.get('/:kind/entry', staff, wrap(async (req, res) => {
   res.json({ slot: slotOut, strands, students: students.map(asStudent), strandSheets, testDate, marks });
 }));
 router.put('/:kind/entry', staff, wrap(async (req, res) => {
-  const locked = await lockedGrade(req);
-  const s = slot(req, { ...req.body, grade: locked || req.body.grade, section: (await lockedSection(req)) || req.body.section });
+  const s = slot(req, req.body);
   await checkEditPerm(req, s.grade, s.section);
   const strands = strandsOf(req, s.subject, s.grade);
   const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
@@ -201,12 +202,8 @@ router.put('/:kind/entry', staff, wrap(async (req, res) => {
 // ── CSV bulk upload: one row per student, one column per subject
 // (or per strand for strand subjects) ────────────────────────────────
 router.put('/:kind/bulk', staff, wrap(async (req, res) => {
-  const locked = await lockedGrade(req);
-
   const base = slot(req, {
     ...req.body,
-    grade: locked || req.body.grade,
-    section: (await lockedSection(req)) || req.body.section,
     subject: req.cfg.subjects[0],
   });
   await checkEditPerm(req, base.grade, base.section);
@@ -395,11 +392,12 @@ router.put('/:kind/bulk', staff, wrap(async (req, res) => {
 
 // ── Analytics ───────────────────────────────────────────────────────────────
 router.get('/:kind/analytics', staff, wrap(async (req, res) => {
-  const locked = await lockedGrade(req);
-  const grade = locked || req.query.grade || MARK_GRADES[0];
+  const acc = await teacherAcc(req);
+  const grade = req.query.grade || (acc ? viewGrades(acc)[0] : null) || MARK_GRADES[0];
   if (!ALL_GRADES.includes(grade)) throw bad('Choose a valid grade.');
-  const section = (await lockedSection(req)) || str(req.query.section) || null;
-  const [students, raw] = await Promise.all([studentsOf(grade, section), MarkSheet.find({ kind: req.kind, grade, academicYear: ACADEMIC_YEAR }).lean()]);
+  assertViewGrade(acc, grade);
+  const section = str(req.query.section) || null;
+  const [students, raw] = await Promise.all([studentsOf(grade, sectionQuery(acc, grade, section).section), MarkSheet.find({ kind: req.kind, grade, academicYear: ACADEMIC_YEAR }).lean()]);
   const list = students.map(asStudent);
   res.json({
     grade, section: section || '', academicYear: ACADEMIC_YEAR,
