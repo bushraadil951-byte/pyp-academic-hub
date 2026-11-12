@@ -10,6 +10,9 @@ const userSchema = new mongoose.Schema({
   viewGrade: { type: String, default: null },
   viewSection: { type: String, default: null },
   editSection: { type: String, default: null },
+  editGrade: { type: String },                    // null = no edit access, 'ALL' = every grade, or one grade
+  viewSections: { type: [String], default: [] },  // empty = every section
+  editSections: { type: [String], default: [] },
   email: { type: String, default: null, lowercase: true, trim: true, maxlength: 254 }, // recovery address (a parent's, for students); NOT unique: siblings can share one
   mustChangePassword: { type: Boolean, default: false },   // true after an admin sets/resets the password
   passwordChangedAt: { type: Date, default: null },        // sessions issued before this are rejected
