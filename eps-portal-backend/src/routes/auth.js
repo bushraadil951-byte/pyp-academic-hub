@@ -4,10 +4,11 @@ import { User } from '../models/User.js';
 import { checkPassword, hashPassword } from '../utils/password.js';
 import { clearSession, requireAuth, setSession } from '../middleware/auth.js';
 import { HttpError, str, wrap } from '../utils/helpers.js';
+import { rulesOf } from '../utils/teacherAccess.js';
 
 const router = Router();
 export const publicUser = (u) => ({
-  id: u.id, name: u.name, role: u.role, grade: u.grade ?? null, viewGrade: u.viewGrade ?? null,
+  id: u.id, name: u.name, role: u.role, grade: u.grade ?? null, viewGrades: u.role === 'teacher' ? [...new Set(rulesOf(u).map((r) => r.grade))] : [],,
   email: u.email ?? null, mustChange: !!u.mustChangePassword,
 });
 
