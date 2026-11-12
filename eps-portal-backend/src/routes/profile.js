@@ -12,6 +12,7 @@ import {
   RATING_COLORS, RATING_SCALE, TERMS,
 } from '../utils/profileData.js';
 import { computeAptitude, EY_APTITUDE_STRANDS } from '../utils/aptitude.js';
+import { assertViewGrade, canEditStudent, canViewStudent, loadAccess, sectionQuery, studentFilter, uiScope } from '../utils/teacherAccess.js';
 
 const router = Router();
 const staff = requireAuth(ROLES.TEACHER, ROLES.ADMIN);
@@ -19,18 +20,8 @@ const student = requireAuth(ROLES.STUDENT);
 const EY_GRADES = ['Nursery', 'KG-1', 'KG-2'];
 
 // ── helpers ─────────────────────────────────────────────────────────────────
-const getTeacherAccess = async (req) => {
-  if (req.user.role !== ROLES.TEACHER) return null;
-  const u = await User.findById(req.user.id).select('grade section viewGrade viewSection editSection');
-  return {
-    viewGrade: u?.viewGrade || null,
-    viewSection: u?.viewSection || null,
-    editGrade: u?.grade || null,
-    editSection: u?.editSection || null,
-  };
-};
-
-const lockedGrade = async (req) => (await getTeacherAccess(req))?.viewGrade || null;
+// Teacher access: a list of grade/section rules (utils/teacherAccess.js). Admins: acc is null, nothing is restricted.
+const teacherAcc = async (req) => (req.user.role === ROLES.TEACHER ? loadAccess(req.user.id) : null);
 const avg = (xs) => (xs.length ? safeAvg(xs) : 0);
 const person = (u) => ({ id: String(u._id ?? u.id), name: u.name, grade: u.grade ?? null, section: u.section || '' });
 
@@ -45,33 +36,31 @@ function checkTerm(raw) {
   return term;
 }
 
-// Students the caller may see based on Viewing permissions
+// Students the caller may see: the grade/section asked for, cut down to what a teacher's access allows.
 async function visibleStudents(req) {
-  const acc = await getTeacherAccess(req);
-  const grade = acc?.viewGrade || str(req.query.grade) || null;
-  const section = acc?.viewSection || str(req.query.section) || null;
-  const rows = await User.find({ role: ROLES.STUDENT, ...(grade ? { grade } : { grade: { $nin: EY_GRADES } }), ...(section ? { section } : {}) }).sort({ grade: 1, section: 1, name: 1 }).lean();
-  return { rows, grade, section, locked: acc?.viewGrade || null };
+  const acc = await teacherAcc(req);
+  const grade = str(req.query.grade) || null;
+  const section = str(req.query.section) || null;
+  const rows = await User.find({
+    role: ROLES.STUDENT,
+    $and: [acc ? studentFilter(acc) : {}, grade ? { grade } : { grade: { $nin: EY_GRADES } }, section ? { section } : {}],
+  }).sort({ grade: 1, section: 1, name: 1 }).lean();
+  return { rows, grade, section };
 }
 
 // Student lookup: viewing permission check
 async function studentForStaff(req, id) {
   const s = await User.findOne({ _id: oid(id), role: ROLES.STUDENT });
   if (!s) throw notFound('Student not found.');
-  const acc = await getTeacherAccess(req);
-  if (acc) {
-    if (acc.viewGrade && s.grade !== acc.viewGrade) throw new HttpError(403, 'You do not have access to view this grade.');
-    if (acc.viewSection && s.section !== acc.viewSection) throw new HttpError(403, 'You do not have access to view this section.');
-  }
+  const acc = await teacherAcc(req);
+  if (acc && !canViewStudent(acc, s)) throw new HttpError(403, 'You do not have access to this student.');
   return s;
 }
 
 // Student edit permission check
 async function checkStudentEditPerm(req, s) {
-  const acc = await getTeacherAccess(req);
-  if (!acc) return;
-  if (acc.editGrade && s.grade !== acc.editGrade) throw new HttpError(403, `You only have editing access for ${acc.editGrade}.`);
-  if (acc.editSection && s.section !== acc.editSection) throw new HttpError(403, `You only have editing access for section ${acc.editSection}.`);
+  const acc = await teacherAcc(req);
+  if (acc && !canEditStudent(acc, s)) throw new HttpError(403, 'You have view-only access to this student.');
 }
 const mapBy = (rows, key, val) => Object.fromEntries(rows.map((r) => [r[key], val(r)]));
 
@@ -79,15 +68,12 @@ const mapBy = (rows, key, val) => Object.fromEntries(rows.map((r) => [r[key], va
 router.get('/config', requireAuth(), wrap(async (req, res) => {
   const ey = req.query.level === 'ey';
   const levelGrades = ey ? EY_GRADES : MARK_GRADES;
-  const acc = req.user.role === ROLES.STUDENT ? null : await getTeacherAccess(req);
-  const locked = acc?.viewGrade || null;
-  const vs = acc?.viewSection || null;
+  const scope = uiScope(req.user.role === ROLES.TEACHER ? await teacherAcc(req) : null, levelGrades, MARK_SECTIONS);
   res.json({
     academicYear: ACADEMIC_YEAR, terms: TERMS, ratingScale: RATING_SCALE, ratingColors: RATING_COLORS,
     learnerProfile: LEARNER_PROFILE, ispProfile: ISP_PROFILE, atlSkills: ATL_SKILLS, atlDescriptors: ATL_DESCRIPTORS,
     strands: Object.keys(APTITUDE_STRANDS),
-    grades: locked ? levelGrades.filter((g) => g === locked) : levelGrades, gradeLocked: !!locked,
-    sections: vs ? [vs] : MARK_SECTIONS, sectionLocked: !!vs, isAdmin: req.user.role === ROLES.ADMIN,
+    ...scope, isAdmin: req.user.role === ROLES.ADMIN,
   });
 }));
 
@@ -158,6 +144,7 @@ router.get('/ib/atl', staff, wrap(async (req, res) => {
 
 router.put('/ib/atl', staff, wrap(async (req, res) => {
   const s = await studentForStaff(req, req.body.studentId);
+  await checkStudentEditPerm(req, s);
   const term = checkTerm(req.body.term);
   const skill = str(req.body.skill);
   const grade = ATL_SKILLS.Communication[s.grade] ? s.grade : 'Grade 3';
@@ -339,12 +326,12 @@ router.put('/student/isp', student, wrap(async (req, res) => {
 router.get('/aptitude', staff, wrap(async (req, res) => {
   const ey = req.query.level === 'ey';
   const levelGrades = ey ? EY_GRADES : MARK_GRADES;
-  const acc = await getTeacherAccess(req);
-  const locked = acc?.viewGrade || null;
-  const grade = locked || str(req.query.grade) || levelGrades[0];
+  const acc = await teacherAcc(req);
+  const grade = str(req.query.grade) || (acc ? uiScope(acc, levelGrades, MARK_SECTIONS).grades[0] : null) || levelGrades[0];
   if (!levelGrades.includes(grade)) throw bad('Choose a valid grade.');
-  const section = acc?.viewSection || str(req.query.section) || null;
-  const students = await User.find({ role: ROLES.STUDENT, grade, ...(section ? { section } : {}) }).sort({ name: 1 }).lean();
+  assertViewGrade(acc, grade);
+  const section = str(req.query.section) || null;
+  const students = await User.find({ role: ROLES.STUDENT, grade, ...sectionQuery(acc, grade, section) }).sort({ name: 1 }).lean();
   const sheets = await MarkSheet.find({ academicYear: ACADEMIC_YEAR, grade }).select('kind number subject strand section grade academicYear maxMarks marks.student marks.marks').lean();
   const apt = computeAptitude({ sheets, studentIds: students.map((s) => String(s._id)), ey });
   const strands = Object.keys(APTITUDE_STRANDS);
