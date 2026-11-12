@@ -7,6 +7,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { hashPassword } from '../utils/password.js';
 import { scoreAttempt } from '../utils/scoring.js';
 import { HttpError, bad, cleanEmail, notFound, oid, safeAvg, str, wrap } from '../utils/helpers.js';
+import { describe, rulesOf } from '../utils/teacherAccess.js';
 
 const DT_GRADES = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'];
 const EY_GRADES = ['Nursery', 'KG-1', 'KG-2'];
@@ -46,11 +47,26 @@ const personJson = (u) => ({
   username: u.username,
   grade: u.grade ?? null,
   section: u.section ?? null,
-  viewGrade: u.viewGrade ?? null,
-  viewSection: u.viewSection ?? null,
-  editSection: u.editSection ?? null,
+  viewGrade: u.role === ROLES.TEACHER ? (u.viewGrade ?? null) : null,
+  viewSections: u.role === ROLES.TEACHER ? (u.viewSections?.length ? u.viewSections : (u.viewSection ? [u.viewSection] : [])) : [],
+  editGrade: u.role === ROLES.TEACHER ? (u.editGrade ?? u.grade ?? null) : null,
+  editSections: u.role === ROLES.TEACHER ? (u.editSections?.length ? u.editSections : (u.editSection ? [u.editSection] : [])) : [],
+  accessText: u.role === ROLES.TEACHER ? `View: ${describe(rulesOf(u)) || 'none'} · Edit: ${describe(rulesOf(u).filter((r) => r.canEdit)) || 'none'}` : '',
   email: u.email ?? null
 });
+
+const SECTIONS = ['A', 'B', 'C', 'D'];
+function cleanAccess(body) {
+  const grade = (v) => { const g = str(v); if (!g) return null; if (g !== 'ALL' && !STUDENT_GRADES.includes(g)) throw bad('Choose a valid grade.'); return g; };
+  const sections = (v) => [...new Set((Array.isArray(v) ? v : []).map(str).filter((x) => SECTIONS.includes(x)))];
+  const viewGrade = grade(body.viewGrade), editGrade = grade(body.editGrade);
+  return {
+    viewGrade, viewSections: viewGrade ? sections(body.viewSections) : [],
+    editGrade, editSections: editGrade ? sections(body.editSections) : [],
+    grade: editGrade && editGrade !== 'ALL' ? editGrade : null,
+    viewSection: null, editSection: null,
+  };
+}
 
 function peopleRoutes(role) {
   const isStudent = role === ROLES.STUDENT;
@@ -64,7 +80,7 @@ function peopleRoutes(role) {
 
   r.post('/', wrap(async (req, res) => {
     const name = str(req.body.name), username = str(req.body.username), password = str(req.body.password);
-    const grade = str(req.body.grade) || null;
+    const grade = isStudent ? (str(req.body.grade) || null) : null;
     if (isStudent && !STUDENT_GRADES.includes(grade)) throw bad('Choose a grade.');
     // (removed: if (isStudent && !DT_GRADES.includes(grade)) ...)
     if (await User.exists({ username })) throw new HttpError(409, 'Username already exists.');
@@ -77,9 +93,7 @@ function peopleRoutes(role) {
       password: hashPassword(password),
       email: cleanEmail(req.body.email), mustChangePassword: true,
       section: isStudent ? (str(req.body.section) || 'A') : null,
-      viewGrade: !isStudent ? (str(req.body.viewGrade) || null) : null,
-      viewSection: !isStudent ? (str(req.body.viewSection) || null) : null,
-      editSection: !isStudent ? (str(req.body.editSection) || null) : null,
+      ...(isStudent ? {} : cleanAccess(req.body)),
     });
     res.status(201).json(personJson(user));
   }));
@@ -88,14 +102,11 @@ function peopleRoutes(role) {
     const user = await User.findOne({ _id: oid(req.params.id), role });
     if (!user) throw notFound(`${label} not found.`);
     if (str(req.body.name)) user.name = str(req.body.name);
-    user.grade = str(req.body.grade) || null;
-
     if (isStudent) {
+      user.grade = str(req.body.grade) || null;
       user.section = str(req.body.section) || 'A';
     } else {
-      user.viewGrade = str(req.body.viewGrade) || null;
-      user.viewSection = str(req.body.viewSection) || null;
-      user.editSection = str(req.body.editSection) || null;
+      user.set(cleanAccess(req.body));
     }
 
     if ('email' in req.body) user.email = cleanEmail(req.body.email);
