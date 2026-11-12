@@ -7,6 +7,29 @@ import { useFetch } from '../../components/useFetch.js';
 import { Badge, Empty, Field, Loading, Modal } from '../../components/ui.jsx';
 import ResetPasswordButton from '../../components/ResetPasswordButton.jsx';
 
+const SECTION_LETTERS = ['A', 'B', 'C', 'D'];
+
+function AccessBlock({ title, grade, sections, grades, onGrade, onSection, onAllSections }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: '.8rem', fontWeight: 600, color: '#64748b', marginBottom: 6 }}>{title}</div>
+      <select className="form-input" value={grade || ''} onChange={(e) => onGrade(e.target.value)}>
+        <option value="">No grade</option>
+        <option value="ALL">All grades</option>
+        {grades.map((g) => <option key={g} value={g}>{g}</option>)}
+      </select>
+      {grade && (
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8, fontSize: '.85rem' }}>
+          <label><input type="checkbox" checked={!(sections || []).length} onChange={onAllSections} /> All sections</label>
+          {SECTION_LETTERS.map((sec) => (
+            <label key={sec}><input type="checkbox" checked={(sections || []).includes(sec)} onChange={() => onSection(sec)} /> Section {sec}</label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Shared add/edit/delete screen for students and teachers.
 export default function People({ kind, grades, singular }) {
   const flash = useFlash();
@@ -27,7 +50,10 @@ export default function People({ kind, grades, singular }) {
 
   const rows = all.filter(
     (p) =>
-      (!gradeF || p.grade === gradeF) &&
+      (!gradeF ||
+        (isStudent
+          ? p.grade === gradeF
+          : [p.viewGrade, p.editGrade].some((g) => g === gradeF || g === 'ALL'))) &&
       (!sectionF || (p.section || '') === sectionF) &&
       (!q ||
         (p.name || '').toLowerCase().includes(q) ||
@@ -54,6 +80,13 @@ export default function People({ kind, grades, singular }) {
     }));
   };
 
+  const setAccessGrade = (which, grade) => setForm((cur) => ({ ...cur, [`${which}Grade`]: grade, [`${which}Sections`]: [] }));
+  const toggleAccessSection = (which, sec) => setForm((cur) => {
+    const list = cur[`${which}Sections`] || [];
+    return { ...cur, [`${which}Sections`]: list.includes(sec) ? list.filter((x) => x !== sec) : [...list, sec] };
+  });
+  const allAccessSections = (which) => setForm((cur) => ({ ...cur, [`${which}Sections`]: [] }));
+
   // Open the Add form.
   const openAddForm = () => {
     if (isStudent) {
@@ -65,14 +98,7 @@ export default function People({ kind, grades, singular }) {
       });
     } else {
       // New teachers start with NO access point selected.
-      setForm({
-        grade: '',
-        editSection: '',
-        viewGrade: '',
-        viewSection: '',
-        email: '',
-        password: '',
-      });
+      setForm({ viewGrade: '', viewSections: [], editGrade: '', editSections: [], email: '' });
     }
   };
 
@@ -334,7 +360,7 @@ export default function People({ kind, grades, singular }) {
                   <th>
                     {isStudent
                       ? 'Grade'
-                      : 'Assigned grade'}
+                      : 'Access'}
                   </th>
 
                   {isStudent && (
@@ -380,14 +406,12 @@ export default function People({ kind, grades, singular }) {
                     </td>
 
                     <td>
-                      {p.grade ? (
-                        <Badge tone="purple">
-                          {p.grade}
-                        </Badge>
+                      {isStudent ? (
+                        <Badge tone="purple">{p.grade}</Badge>
+                      ) : p.accessText ? (
+                        <span style={{ fontSize: '.8rem' }}>{p.accessText}</span>
                       ) : (
-                        <Badge tone="gray">
-                          All grades
-                        </Badge>
+                        <Badge tone="gray">No access</Badge>
                       )}
                     </td>
 
@@ -506,174 +530,34 @@ export default function People({ kind, grades, singular }) {
               /* =========================
                   TEACHER ACCESS POINT
               ========================== */
-              <div
-                style={{
-                  marginTop: 6,
-                  marginBottom: 16,
-                }}
-              >
-                <div
-                  style={{
-                    fontWeight: 600,
-                    fontSize: '.9rem',
-                    color: '#1e293b',
-                    marginBottom: 10,
-                  }}
-                >
+              <div style={{ marginTop: 6, marginBottom: 16 }}>
+                <div style={{ fontWeight: 600, fontSize: '.9rem', color: '#1e293b', marginBottom: 4 }}>
                   Access Point
                 </div>
-
-                {/* =====================
-                    VIEWING
-                ====================== */}
-                <div
-                  style={{
-                    marginBottom: 16,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '.8rem',
-                      fontWeight: 600,
-                      color: '#64748b',
-                      marginBottom: 6,
-                    }}
-                  >
-                    Viewing
-                  </div>
-
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns:
-                        '1fr 1fr',
-                      gap: 10,
-                    }}
-                  >
-                    {/* Viewing grade */}
-                    <select
-                      className="form-input"
-                      value={form.viewGrade || ''}
-                      onChange={set('viewGrade')}
-                    >
-                      <option value="">
-                        Select grade
-                      </option>
-
-                      {grades.map((g) => (
-                        <option
-                          key={g}
-                          value={g}
-                        >
-                          {g}
-                        </option>
-                      ))}
-                    </select>
-
-                    {/* Viewing section */}
-                    <select
-                      className="form-input"
-                      value={
-                        form.viewSection || ''
-                      }
-                      onChange={set(
-                        'viewSection'
-                      )}
-                    >
-                      <option value="">
-                        Select section
-                      </option>
-
-                      {[
-                        'A',
-                        'B',
-                        'C',
-                        'D',
-                      ].map((section) => (
-                        <option
-                          key={section}
-                          value={section}
-                        >
-                          {section}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <div style={{ fontSize: '.75rem', color: '#64748b', marginBottom: 10 }}>
+                  Choose one grade (or "All grades") and tick the sections. "No grade" means no access.
+                  Whatever a teacher may edit, they can also view.
                 </div>
 
-                {/* =====================
-                    EDITING
-                ====================== */}
-                <div>
-                  <div
-                    style={{
-                      fontSize: '.8rem',
-                      fontWeight: 600,
-                      color: '#64748b',
-                      marginBottom: 6,
-                    }}
-                  >
-                    Editing
-                  </div>
+                <AccessBlock
+                  title="Viewing"
+                  grade={form.viewGrade}
+                  sections={form.viewSections}
+                  grades={grades}
+                  onGrade={(g) => setAccessGrade('view', g)}
+                  onSection={(x) => toggleAccessSection('view', x)}
+                  onAllSections={() => allAccessSections('view')}
+                />
 
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns:
-                        '1fr 1fr',
-                      gap: 10,
-                    }}
-                  >
-                    {/* Editing grade */}
-                    <select
-                      className="form-input"
-                      value={form.grade || ''}
-                      onChange={set('grade')}
-                    >
-                      <option value="">
-                        Select grade
-                      </option>
-
-                      {grades.map((g) => (
-                        <option
-                          key={g}
-                          value={g}
-                        >
-                          {g}
-                        </option>
-                      ))}
-                    </select>
-
-                    {/* Editing section */}
-                    <select
-                      className="form-input"
-                      value={
-                        form.editSection || ''
-                      }
-                      onChange={set(
-                        'editSection'
-                      )}
-                    >
-                      <option value="">
-                        Select section
-                      </option>
-
-                      {[
-                        'A',
-                        'B',
-                        'C',
-                        'D',
-                      ].map((section) => (
-                        <option
-                          key={section}
-                          value={section}
-                        >
-                          {section}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                <AccessBlock
+                  title="Editing"
+                  grade={form.editGrade}
+                  sections={form.editSections}
+                  grades={grades}
+                  onGrade={(g) => setAccessGrade('edit', g)}
+                  onSection={(x) => toggleAccessSection('edit', x)}
+                  onAllSections={() => allAccessSections('edit')}
+                />
               </div>
             )}
 
