@@ -33,17 +33,15 @@ const getTeacherAccess = async (req) => {
 const lockedGrade = async (req) => {
   if (req.user?.role !== ROLES.TEACHER) return null;
   const acc = await getTeacherAccess(req);
-  return acc?.viewGrade || null;
+  return acc?.viewSection || acc?.editSection || null;
 };
 
 const checkEditPerm = async (req, grade, section) => {
   if (req.user?.role !== ROLES.TEACHER) return;
   const acc = await getTeacherAccess(req);
-  if (!acc) return;
-  if (acc.editGrade && grade && acc.editGrade !== grade) {
-    throw bad(`You only have permission to edit marks for ${acc.editGrade}.`);
-  }
-  if (acc.editSection && section && acc.editSection !== section) {
+  if (!acc || !acc.editGrade) throw bad('You have view-only access. Ask an admin for editing access.');
+  if (grade !== acc.editGrade) throw bad(`You only have permission to edit marks for ${acc.editGrade}.`);
+  if (acc.editSection && section !== acc.editSection) {
     throw bad(`You only have permission to edit marks for section ${acc.editSection}.`);
   }
 };
@@ -159,7 +157,7 @@ router.get('/:kind/entry', staff, wrap(async (req, res) => {
   const defaultGrade = locked || req.query.grade || MARK_GRADES[0];
   const defaultSub = req.query.subject || req.cfg?.subjects?.[0] || 'English';
   const defaultNum = Number(req.query.number || req.cfg?.numbers?.[0] || 1);
-  const s = slot(req, { ...req.query, grade: defaultGrade, subject: defaultSub, number: defaultNum });
+  const s = slot(req, { ...req.query, grade: defaultGrade, section: (await lockedSection(req)) || req.query.section, subject: defaultSub, number: defaultNum });
   const strands = strandsOf(req, s.subject, s.grade);
   const [students, sheets] = await Promise.all([studentsOf(s.grade, s.section), findSheets(s, strands)]);
   const slotOut = { grade: s.grade, section: s.section || '', subject: s.subject, number: s.number };
@@ -188,7 +186,7 @@ router.get('/:kind/entry', staff, wrap(async (req, res) => {
 }));
 router.put('/:kind/entry', staff, wrap(async (req, res) => {
   const locked = await lockedGrade(req);
-  const s = slot(req, { ...req.body, grade: locked || req.body.grade });
+  const s = slot(req, { ...req.body, grade: locked || req.body.grade, section: (await lockedSection(req)) || req.body.section });
   await checkEditPerm(req, s.grade, s.section);
   const strands = strandsOf(req, s.subject, s.grade);
   const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
@@ -234,6 +232,7 @@ router.put('/:kind/bulk', staff, wrap(async (req, res) => {
   const base = slot(req, {
     ...req.body,
     grade: locked || req.body.grade,
+    section: (await lockedSection(req)) || req.body.section,
     subject: req.cfg.subjects[0],
   });
   await checkEditPerm(req, base.grade, base.section);
@@ -425,7 +424,7 @@ router.get('/:kind/analytics', staff, wrap(async (req, res) => {
   const locked = await lockedGrade(req);
   const grade = locked || req.query.grade || MARK_GRADES[0];
   if (!ALL_GRADES.includes(grade)) throw bad('Choose a valid grade.');
-  const section = str(req.query.section) || null;
+  const section = (await lockedSection(req)) || str(req.query.section) || null;
   const [students, raw] = await Promise.all([studentsOf(grade, section), MarkSheet.find({ kind: req.kind, grade, academicYear: ACADEMIC_YEAR }).lean()]);
   const list = students.map(asStudent);
   res.json({
