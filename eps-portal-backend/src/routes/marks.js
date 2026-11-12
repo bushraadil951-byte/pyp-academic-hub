@@ -33,6 +33,11 @@ const getTeacherAccess = async (req) => {
 const lockedGrade = async (req) => {
   if (req.user?.role !== ROLES.TEACHER) return null;
   const acc = await getTeacherAccess(req);
+  return acc?.viewGrade || null;
+};
+const lockedSection = async (req) => {
+  if (req.user?.role !== ROLES.TEACHER) return null;
+  const acc = await getTeacherAccess(req);
   return acc?.viewSection || acc?.editSection || null;
 };
 
