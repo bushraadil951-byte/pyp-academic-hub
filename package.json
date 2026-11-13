@@ -1,0 +1,13 @@
+{
+  "name": "pyp-academic-hub",
+  "private": true,
+  "description": "EPS PYP Academic Hub: the Express API serves the React build as one Node service.",
+  "engines": { "node": ">=18" },
+  "workspaces": ["eps-portal-backend", "eps-portal-frontend"],
+  "scripts": {
+    "build": "npm ci && npm run build -w eps-portal-frontend",
+    "start": "npm start -w eps-portal-backend",
+    "dev:api": "npm run dev -w eps-portal-backend",
+    "dev:web": "npm run dev -w eps-portal-frontend"
+  }
+}
