@@ -97,8 +97,8 @@ export default function App() {
       <Route path="/" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/change-password" element={<Guard allowMustChange><ChangePassword /></Guard>} />
-      {routes.map(([path, roles, title, el, back]) => (
-        <Route key={path} element={<Guard roles={roles}><Layout title={title} back={back} /></Guard>}>
+      {routes.map(([path, roles, title, el]) => (
+        <Route key={path} element={<Guard roles={roles}><Layout title={title} back={path === '/portal' ? undefined : '/portal'} /></Guard>}>
           <Route path={path} element={el} />
         </Route>
       ))}
