@@ -57,6 +57,7 @@ export default function People({ kind, grades, singular }) {
       (!sectionF || (p.section || '') === sectionF) &&
       (!q ||
         (p.name || '').toLowerCase().includes(q) ||
+        (p.email || '').toLowerCase().includes(q) ||
         (p.username || '').toLowerCase().includes(q))
   );
 
@@ -94,12 +95,19 @@ export default function People({ kind, grades, singular }) {
         grade: grades[0] || '',
         section: 'A',
         email: '',
-        password: '',
       });
     } else {
       // New teachers start with NO access point selected.
       setForm({ viewGrade: '', viewSections: [], editGrade: '', editSections: [], email: '' });
     }
+  };
+
+  // The server still needs a username and a password. The email address is the username, and the password is
+  // random and never shown: give people theirs with the Reset password button.
+  const randomPassword = () => {
+    const a = new Uint8Array(12);
+    crypto.getRandomValues(a);
+    return Array.from(a, (b) => b.toString(36).padStart(2, '0')).join('').slice(0, 16) + 'Aa1!';
   };
 
   // Save person.
@@ -110,7 +118,8 @@ export default function People({ kind, grades, singular }) {
       if (form.id) {
         await api.put(`/admin/${kind}/${form.id}`, form);
       } else {
-        await api.post(`/admin/${kind}`, form);
+        const email = (form.email || '').trim().toLowerCase();
+        await api.post(`/admin/${kind}`, { ...form, email, username: email, password: randomPassword() });
       }
 
       flash(
@@ -249,7 +258,7 @@ export default function People({ kind, grades, singular }) {
             <input
               id="flt-search"
               className="form-input"
-              placeholder="Name or username…"
+              placeholder="Name or email…"
               value={search}
               onChange={(e) =>
                 setSearch(e.target.value)
@@ -354,7 +363,6 @@ export default function People({ kind, grades, singular }) {
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>Username</th>
                   <th>Email</th>
 
                   <th>
@@ -380,14 +388,6 @@ export default function People({ kind, grades, singular }) {
                       }}
                     >
                       {p.name}
-                    </td>
-
-                    <td
-                      style={{
-                        color: 'var(--ink3)',
-                      }}
-                    >
-                      {p.username}
                     </td>
 
                     <td
@@ -434,10 +434,7 @@ export default function People({ kind, grades, singular }) {
                       <button
                         className="btn btn-secondary btn-xs"
                         onClick={() =>
-                          setForm({
-                            ...p,
-                            password: '',
-                          })
+                          setForm({ ...p })
                         }
                       >
                         Edit
@@ -480,17 +477,6 @@ export default function People({ kind, grades, singular }) {
                 required
                 value={form.name || ''}
                 onChange={set('name')}
-              />
-            </Field>
-
-            {/* Username */}
-            <Field label="Username">
-              <input
-                className="form-input"
-                required
-                disabled={!!form.id}
-                value={form.username || ''}
-                onChange={set('username')}
               />
             </Field>
 
@@ -562,40 +548,18 @@ export default function People({ kind, grades, singular }) {
             )}
 
             {/* =========================
-                EMAIL
+                EMAIL (this is also the login)
             ========================== */}
-            <Field
-              label={
-                isStudent
-                  ? 'Parent or guardian email (for password reset codes)'
-                  : 'Email (for password reset codes)'
-              }
-            >
+            <Field label="Email">
               <input
                 className="form-input"
                 type="email"
-                placeholder="name@example.com"
+                required
+                placeholder="Enter official email id (@e-p-s.in)"
+                pattern="[A-Za-z0-9._%+\-]+@e-p-s\.in"
+                title="Enter the official email id ending with @e-p-s.in"
                 value={form.email || ''}
                 onChange={set('email')}
-              />
-            </Field>
-
-            {/* =========================
-                PASSWORD
-            ========================== */}
-            <Field
-              label={
-                form.id
-                  ? 'New temporary password (leave blank to keep current)'
-                  : 'Temporary password'
-              }
-            >
-              <input
-                className="form-input"
-                type="password"
-                required={!form.id}
-                value={form.password || ''}
-                onChange={set('password')}
               />
             </Field>
 
