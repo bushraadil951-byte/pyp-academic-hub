@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { useFetch } from '../../components/useFetch.js';
 import { Empty, Loading } from '../../components/ui.jsx';
@@ -13,12 +14,16 @@ const Cell = ({ v }) => { const b = band(v); return <td style={{ background: b.b
 
 // ── Teacher / admin: class heatmap, per-strand ranking, single-student radar ──
 export function AptitudeStaff() {
+  const [sp] = useSearchParams();
+  const level = sp.get('level') === 'ey' ? 'ey' : '';          // Early Years page: ?level=ey
   const [grade, setGrade] = useState('');
   const [section, setSection] = useState('');
   const [studentId, setStudentId] = useState('');
   const [strand, setStrand] = useState('');
-  const { data: cfg } = useFetch('/profile/config');
-  const { data: d, loading, error } = useFetch(`/profile/aptitude?${new URLSearchParams({ grade, section })}`);
+  // Switching between the Early Years and Grade 1-5 pages must not keep the old grade selected.
+  useEffect(() => { setGrade(''); setSection(''); setStudentId(''); setStrand(''); }, [level]);
+  const { data: cfg } = useFetch(`/profile/config${level ? '?level=ey' : ''}`);
+  const { data: d, loading, error } = useFetch(`/profile/aptitude?${new URLSearchParams({ grade, section, ...(level ? { level } : {}) })}`);
   if (!cfg || loading) return <Loading />;
   if (error) return <div className="alert alert-error">{error.message}</div>;
   const active = strand || d.strands[0];
