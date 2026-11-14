@@ -21,7 +21,7 @@ const NAV = {
   ],
   [ROLES.STUDENT]: [
     ['Main', [
-      ['/portal', Home, 'Home'], ['/analytics', TrendingUp, 'IBT Analytics'],
+      ['/portal', Home, 'Home'],
       ['/student/progress/DT', BarChart3, 'My Diagnostics'], ['/student/ib', Sprout, 'My IB Profile'],
       ['/student/isp', BookOpen, 'My ISP Profile'], ['/student/aptitude', Target, 'My Aptitude'],
     ]],
