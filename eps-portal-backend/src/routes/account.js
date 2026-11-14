@@ -36,7 +36,7 @@ router.post('/change-password', limiter(10, 'Too many attempts. Please wait a fe
 }));
 
 // ── Admin (any teacher or student) or teacher (students in their own grade): issue a temporary password ──
-router.post('/admin-reset/:id', requireAuth(ROLES.ADMIN, ROLES.TEACHER), wrap(async (req, res) => {
+router.post('/admin-reset/:id', requireAuth(ROLES.ADMIN), wrap(async (req, res) => {
   const target = await User.findById(oid(req.params.id));
   if (!target) throw notFound('User not found.');
   if (target.id === req.user.id) throw bad('Use "Change password" for your own account.');
