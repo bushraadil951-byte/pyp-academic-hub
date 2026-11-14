@@ -8,7 +8,7 @@ import { hashPassword } from '../utils/password.js';
 import { generateTempPassword } from '../utils/passwordPolicy.js';
 import { usernameFromEmail } from '../utils/username.js';
 import { scoreAttempt } from '../utils/scoring.js';
-import { HttpError, bad, notFound, oid, safeAvg, schoolEmail, str, wrap } from '../utils/helpers.js';
+import { HttpError, bad, notFound, oid, safeAvg, schoolEmail, cleanEmail, str, wrap } from '../utils/helpers.js';
 import { describe, rulesOf } from '../utils/teacherAccess.js';
 
 const DT_GRADES = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'];
