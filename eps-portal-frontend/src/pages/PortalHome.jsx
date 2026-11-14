@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
-import { ACADEMIC_YEAR, EY_GRADES, EY_STUDENT_MODULES, PORTAL_MODULES, ROLE_LABELS } from '../constants.js';
+import { ACADEMIC_YEAR, EY_GRADES, EY_STUDENT_MODULES, GRADES, PORTAL_MODULES, ROLE_LABELS } from '../constants.js';
 import './portal.css';
 
 export default function PortalHome() {
@@ -9,7 +9,9 @@ export default function PortalHome() {
   const isEyTeacher = user.role === 'teacher' && (user.viewGrades || []).some((g) => EY_GRADES.includes(g));
   const modules = isEyStudent
     ? EY_STUDENT_MODULES
-    : (PORTAL_MODULES[user.role] || []).filter((m) => m.key !== 'ey' || user.role !== 'teacher' || isEyTeacher);
+    : (PORTAL_MODULES[user.role] || [])
+        .filter((m) => m.key !== 'ey' || user.role !== 'teacher' || isEyTeacher)
+        .filter((m) => m.key !== 'ibt' || user.role !== 'student' || GRADES.includes(user.grade));
   return (
     <div className="portal-wrap">
       <section className="portal-hero">
