@@ -1,6 +1,5 @@
 import { useFetch } from '../../components/useFetch.js';
 import { Badge, Empty, Loading, Percent } from '../../components/ui.jsx';
-import ResetPasswordButton from '../../components/ResetPasswordButton.jsx';
 
 export default function TeacherStudents() {
   const { data, loading } = useFetch('/teacher/students');
@@ -17,7 +16,6 @@ export default function TeacherStudents() {
               <td>{s.section || '—'}</td>
               <td>{s.testsTaken}</td>
               <td>{s.testsTaken ? <Percent value={s.avg} /> : '—'}</td>
-              <td style={{ textAlign: 'right' }}><ResetPasswordButton person={s} /></td>
             </tr>))}
           </tbody>
         </table></div>
