@@ -111,6 +111,24 @@ router.get('/hub', staff, wrap(async (req, res) => {
   }));
 }));
 
+// ── Student progress: a student's own DT marks (the student portal page calls this) ──
+router.get('/student-progress/:kind', requireAuth(ROLES.STUDENT), wrap(async (req, res) => {
+  const s = await User.findById(req.user.id).select('name grade section').lean();
+  if (!s) throw notFound('Student not found.');
+  if (!ALL_GRADES.includes(s.grade)) throw bad('No marks are recorded for your grade.');
+  if (isEy(s.grade) && req.kind === 'DT') throw bad('EY classes have FA and SA only.');
+  const subjects = req.cfg.subjects.filter((sub) => !(sub === 'Hindi' && EY_NO_HINDI.includes(s.grade)));
+  const section = s.section || null;
+  const raw = await MarkSheet.find({ kind: req.kind, grade: s.grade, academicYear: ACADEMIC_YEAR }).lean();
+  const strandsBySubject = Object.fromEntries(Object.entries(strandMap(req, s.grade)).filter(([sub]) => subjects.includes(sub)));
+  res.json({
+    kind: req.kind, label: req.cfg.label, academicYear: ACADEMIC_YEAR,
+    student: { id: String(s._id), name: s.name, grade: s.grade, section: s.section || '' },
+    ...computeStudentSeries({ sheets: collapseStrands(raw), studentId: s._id, studentSection: section, subjects, numbers: req.cfg.numbers }),
+    strands: computeStudentStrands({ sheets: raw, studentId: s._id, studentSection: section, strandsBySubject, numbers: req.cfg.numbers }),
+  });
+}));
+
 router.get('/:kind/dashboard', staff, wrap(async (req, res) => {
   const ey = req.query.level === 'ey';
   const levelGrades = ey ? EY_GRADES : MARK_GRADES;
