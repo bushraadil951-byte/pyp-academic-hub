@@ -19,11 +19,6 @@ export default function StudentProgress() {
       <div className="sec-header"><div><div className="sec-title">My {d.label}</div><div className="sec-sub">{d.student.grade}{d.student.section ? ` · ${d.student.section}` : ''} · {d.academicYear}</div></div></div>
       {!started ? <div className="card"><Empty>No marks have been entered for you yet. They will appear here once your teacher records them.</Empty></div> : (
         <>
-          {weak.length > 0 && (
-            <div className="alert alert-success" style={{ marginBottom: 16 }}>
-              Focus areas: <strong>{weak.join(', ')}</strong>. <Link to="/student">Practise with a mock test →</Link>
-            </div>
-          )}
           {weakStrands.length > 0 && <div className="alert alert-error" style={{ marginBottom: 16 }}>Strands to work on (below 60%): <strong>{weakStrands.join(' · ')}</strong></div>}
           <div className="grid-2">
             {d.insights.map((ins) => {
