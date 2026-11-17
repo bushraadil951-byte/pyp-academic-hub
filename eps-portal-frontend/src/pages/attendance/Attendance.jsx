@@ -5,7 +5,10 @@ import { useFetch } from '../../components/useFetch.js';
 import { Badge, Empty, Loading, Percent, fmtDate } from '../../components/ui.jsx';
 
 const CHOICES = [[0, 'Present'], [0.5, 'Half day'], [1, 'Absent']];
-const TYPE_TONE = { Holiday: 'red', PTM: 'blue', Meeting: 'blue', Event: 'amber', Exam: 'amber', Other: 'gray' };
+const TYPE_TONE = { Holiday: 'red', PTM: 'blue', Meeting: 'blue', Event: 'amber', Exam: 'amber', 'Working day': 'green', Other: 'gray' };
+const WEEKEND_NOTE = 'Saturdays and Sundays are holidays unless an administrator sets them as working days.';
+const mLabel = (m) => new Date(`${m}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+export const termText = (t) => `Semester I: ${mLabel(t.sem1Start)} to ${mLabel(t.sem1End)} · Semester II: ${mLabel(t.sem2Start)} to ${mLabel(t.sem2End)}`;
 const scopeText = (e) => (!e.grade ? 'Whole school' : !e.section ? `${e.grade} · all sections` : `${e.grade} ${e.section}`);
 
 function EventLine({ e, onDelete }) {
@@ -23,7 +26,7 @@ function EventLine({ e, onDelete }) {
 
 // Staff page: mark a class's attendance for a day, note events, and see the monthly report.
 export default function Attendance() {
-  const { data: cfg, error } = useFetch('/attendance/config');
+  const { data: cfg, error, reload } = useFetch('/attendance/config');
   const [tab, setTab] = useState('mark');
   const [grade, setGrade] = useState('');
   const [section, setSection] = useState('');
@@ -32,14 +35,16 @@ export default function Attendance() {
   if (cfg.grades.length === 0) return <div className="card"><Empty>You have no classes assigned yet. Ask an administrator to give you access.</Empty></div>;
   const g = cfg.gradeLocked ? cfg.grades[0] : grade || cfg.grades[0];
   const sec = cfg.sectionLocked ? cfg.sections[0] : section;
-  const TABS = [['mark', 'Mark attendance'], ['events', 'Events & holidays'], ['report', 'Monthly report']];
+  const TABS = [['mark', 'Mark attendance'], ['events', 'Events & holidays'], ['report', 'Reports'], ...(cfg.isAdmin ? [['terms', 'Semester dates']] : [])];
 
   return (
     <>
       <div className="tab-bar">
         {TABS.map(([k, label]) => <button key={k} type="button" className={`tab-btn ${tab === k ? 'active' : ''}`} onClick={() => setTab(k)}>{label}</button>)}
       </div>
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="sec-sub">{termText(cfg.terms)}</div>
+      <div className="sec-sub" style={{ marginBottom: 10 }}>{WEEKEND_NOTE}</div>
+      {tab !== 'terms' && <div className="card" style={{ marginBottom: 16 }}>
         <div className="form-row-3" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
           <div className="form-group"><label className="form-label">Grade</label>
             <select className="form-input" value={g} disabled={cfg.gradeLocked} onChange={(e) => setGrade(e.target.value)}>
@@ -53,10 +58,11 @@ export default function Attendance() {
           <div className="form-group"><label className="form-label">Minimum attendance</label>
             <div style={{ paddingTop: 8, fontWeight: 600 }}>{cfg.minPercent}% each month</div></div>
         </div>
-      </div>
+      </div>}
       {tab === 'mark' && <MarkDay cfg={cfg} grade={g} section={sec} />}
       {tab === 'events' && <Events cfg={cfg} grade={g} section={sec} />}
       {tab === 'report' && <Report cfg={cfg} grade={g} section={sec} />}
+      {tab === 'terms' && <Terms cfg={cfg} reload={reload} />}
     </>
   );
 }
@@ -112,8 +118,11 @@ function MarkDay({ cfg, grade, section }) {
       </div>
       {sheet.events.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          {!sheet.counted && <div className="alert alert-error" style={{ marginBottom: 8 }}>This day is not counted as a school day, so it is left out of attendance percentages.</div>}
-          {sheet.events.map((e) => <EventLine key={e.id} e={e} onDelete={sheet.canEdit && !(!e.grade || !e.section) ? () => removeEvent(e.id) : null} />)}
+          {sheet.events.map((e) => <EventLine key={e.id} e={e} onDelete={cfg.isAdmin ? () => removeEvent(e.id) : null} />)}
+        </div>)}
+      {!sheet.counted && (
+        <div className="alert alert-error" style={{ marginBottom: 12 }}>
+          {sheet.weekend && !sheet.events.some((e) => !e.countAttendance) ? 'Saturdays and Sundays are holidays, so this day is not counted in attendance percentages unless an administrator sets it as a working day.' : 'This day is not counted as a school day, so it is left out of attendance percentages.'}
         </div>)}
       {!sheet.canEdit && <div className="alert alert-error" style={{ marginBottom: 12 }}>You can view this class but not change its attendance.</div>}
       {sheet.students.length === 0 ? <Empty>No students in this class.</Empty> : (
@@ -144,7 +153,7 @@ function MarkDay({ cfg, grade, section }) {
       {sheet.canEdit && (
         <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-primary" disabled={saving || sheet.students.length === 0} onClick={save}>{saving ? 'Saving…' : 'Save attendance'}</button>
-          <button type="button" className="btn btn-secondary" disabled={!sheet.counted} onClick={noSchool} title="Leave this day out of attendance percentages">No school this day</button>
+          {cfg.isAdmin && <button type="button" className="btn btn-secondary" disabled={!sheet.counted} onClick={noSchool} title="Leave this day out of attendance percentages">No school this day</button>}
         </div>)}
     </div>
   );
@@ -158,7 +167,7 @@ function Events({ cfg, grade, section }) {
   const [f, setF] = useState(blank);
   const [saving, setSaving] = useState(false);
   const set = (patch) => setF((x) => ({ ...x, ...patch }));
-  const pickType = (type) => set({ type, countAttendance: type !== 'Holiday' });
+  const pickType = (type) => set({ type, countAttendance: type !== 'Holiday', ...(type === 'Working day' ? { title: '' } : {}) });
 
   const add = async (e) => {
     e.preventDefault();
@@ -176,7 +185,7 @@ function Events({ cfg, grade, section }) {
 
   return (
     <>
-      <form className="card" style={{ marginBottom: 16 }} onSubmit={add}>
+      {cfg.isAdmin ? <form className="card" style={{ marginBottom: 16 }} onSubmit={add}>
         <div className="card-title">Add an event or holiday</div>
         <div className="form-row-3" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
           <div className="form-group"><label className="form-label">Date</label>
@@ -191,15 +200,17 @@ function Events({ cfg, grade, section }) {
             </select></div>
         </div>
         <div className="form-group"><label className="form-label">Title</label>
-          <input className="form-input" required={f.type !== 'Holiday'} maxLength={120} placeholder={f.type === 'Holiday' ? 'e.g. Diwali break (optional)' : 'e.g. Parent-teacher meeting'} value={f.title} onChange={(e) => set({ title: e.target.value })} /></div>
+          <input className="form-input" required={f.type !== 'Holiday' && f.type !== 'Working day'} maxLength={120} placeholder={f.type === 'Holiday' ? 'e.g. Diwali break (optional)' : f.type === 'Working day' ? 'e.g. Working Saturday (optional)' : 'e.g. Parent-teacher meeting'} value={f.title} onChange={(e) => set({ title: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">Note (optional)</label>
           <input className="form-input" maxLength={500} placeholder="Anything useful when reading the record later" value={f.note} onChange={(e) => set({ note: e.target.value })} /></div>
-        <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+        {f.type === 'Working day'
+          ? <div className="sec-sub" style={{ marginBottom: 12 }}>Use this to make a Saturday or Sunday a school day. Attendance will count for that day.</div>
+          : <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
           <input type="checkbox" checked={f.countAttendance} onChange={(e) => set({ countAttendance: e.target.checked })} />
           Count attendance for this day (untick if students’ presence should not be counted)
-        </label>
+        </label>}
         <button className="btn btn-primary" disabled={saving}>{saving ? 'Adding…' : 'Add event'}</button>
-      </form>
+      </form> : <div className="alert alert-success" style={{ marginBottom: 16 }}>Only an administrator can add or change events and holidays. You can see them here.</div>}
 
       <div className="card">
         <div className="sec-header">
@@ -218,30 +229,52 @@ function Events({ cfg, grade, section }) {
   );
 }
 
+const PERIODS = [['month', 'Monthly'], ['sem1', 'Semester I'], ['sem2', 'Semester II'], ['year', 'Year summary (Sem I, Sem II, annual)']];
+
 function Report({ cfg, grade, section }) {
+  const [period, setPeriod] = useState('month');
   const [month, setMonth] = useState(cfg.today.slice(0, 7));
-  const { data: d, loading, error } = useFetch(`/attendance/report?${new URLSearchParams({ grade, section, month })}`);
+  const { data: d, loading, error } = useFetch(`/attendance/report?${new URLSearchParams({ grade, section, period, month })}`);
+  const cell = (x) => (x.percent === null ? '—' : <Percent value={x.percent} />);
   return (
     <div className="card">
       <div className="sec-header">
         <div><div className="sec-title">{grade}{section ? ` · Section ${section}` : ''}</div>
           <div className="sec-sub">Attendance % = (school days − absences) ÷ school days. A half day counts as 0.5. Days marked “not counted” are left out.</div></div>
-        <input type="month" className="form-input" style={{ width: 170 }} value={month} max={cfg.today.slice(0, 7)} onChange={(e) => e.target.value && setMonth(e.target.value)} aria-label="Month" />
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <select className="form-input" style={{ width: 'auto' }} value={period} onChange={(e) => setPeriod(e.target.value)} aria-label="Period">
+            {PERIODS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+          </select>
+          {period === 'month' && <input type="month" className="form-input" style={{ width: 170 }} value={month} max={cfg.today.slice(0, 7)} onChange={(e) => e.target.value && setMonth(e.target.value)} aria-label="Month" />}
+        </div>
       </div>
       {error ? <div className="alert alert-error">{error.message}</div> : loading || !d ? <Loading /> : (
         <>
+          {period !== 'month' && period !== 'year' && <div className="sec-sub" style={{ marginBottom: 10 }}>{mLabel(d.from)} to {mLabel(d.to)}</div>}
           {d.events.length > 0 && (
             <div style={{ marginBottom: 14 }}>
               <div className="sec-sub" style={{ fontWeight: 600 }}>Events and holidays this month</div>
               {d.events.map((e) => <div key={e.id}><span className="sec-sub">{fmtDate(e.date)}</span><EventLine e={e} /></div>)}
             </div>)}
-          {d.students.length === 0 ? <Empty>No students found.</Empty> : (
+          {d.students.length === 0 ? <Empty>No students found.</Empty> : period === 'year' ? (
+            <div className="table-wrap"><table>
+              <thead><tr><th>Student</th><th>Section</th><th>Working days Sem I</th><th>Sem I %</th><th>Working days Sem II</th><th>Sem II %</th><th>Working days Sem I + II</th><th>Annual %</th></tr></thead>
+              <tbody>{d.students.map((s) => (
+                <tr key={s.id}>
+                  <td style={{ fontWeight: 500 }}>{s.name}</td><td>{s.section}</td>
+                  <td>{s.sem1.workingDays}</td><td>{cell(s.sem1)}</td>
+                  <td>{s.sem2.workingDays}</td><td>{cell(s.sem2)}</td>
+                  <td>{s.annual.workingDays}</td><td>{cell(s.annual)}</td>
+                </tr>))}
+              </tbody>
+            </table></div>
+          ) : (
             <div className="table-wrap"><table>
               <thead><tr><th>Student</th><th>Section</th><th>School days</th><th>Absent days</th><th>Attendance</th><th /></tr></thead>
               <tbody>{d.students.map((s) => (
                 <tr key={s.id}>
                   <td style={{ fontWeight: 500 }}>{s.name}</td><td>{s.section}</td><td>{s.workingDays}</td><td>{s.absentDays}</td>
-                  <td>{s.percent === null ? '—' : <Percent value={s.percent} />}</td>
+                  <td>{cell(s)}</td>
                   <td>{s.belowMinimum && <Badge tone="red">Below {d.minPercent}%</Badge>}</td>
                 </tr>))}
               </tbody>
@@ -249,5 +282,32 @@ function Report({ cfg, grade, section }) {
         </>
       )}
     </div>
+  );
+}
+
+// Administrator: which months make up Semester I and Semester II. Teachers and students see these dates too.
+function Terms({ cfg, reload }) {
+  const flash = useFlash();
+  const [f, setF] = useState({ ...cfg.terms });
+  const [saving, setSaving] = useState(false);
+  const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
+  const save = async (e) => {
+    e.preventDefault(); setSaving(true);
+    try { await api.put('/attendance/terms', f); flash('Semester dates saved.'); reload(); }
+    catch (err) { flash(err.message, 'error'); } finally { setSaving(false); }
+  };
+  const field = (label, k) => (
+    <div className="form-group"><label className="form-label">{label}</label>
+      <input type="month" className="form-input" required value={f[k] || ''} onChange={set(k)} /></div>);
+  return (
+    <form className="card" onSubmit={save}>
+      <div className="card-title">Semester dates</div>
+      <div className="sec-sub" style={{ marginBottom: 12 }}>Attendance is worked out for each month, each semester and the whole year (Semester I + Semester II). Teachers and students see these dates.</div>
+      <div className="form-row-3" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
+        {field('Semester I starts', 'sem1Start')}{field('Semester I ends', 'sem1End')}
+        {field('Semester II starts', 'sem2Start')}{field('Semester II ends', 'sem2End')}
+      </div>
+      <button className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save semester dates'}</button>
+    </form>
   );
 }
