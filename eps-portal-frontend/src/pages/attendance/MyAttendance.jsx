@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useFetch } from '../../components/useFetch.js';
 import { Badge, Empty, Loading, Percent, Stat, fmtDate, pctColor } from '../../components/ui.jsx';
 
+const TYPE_TONE = { Holiday: 'red', PTM: 'blue', Meeting: 'blue', Event: 'amber', Exam: 'amber', Other: 'gray' };
+
 const monthLabel = (m) => new Date(`${m}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
 // Student page: my attendance for a month.
@@ -14,6 +16,7 @@ export default function MyAttendance() {
   const months = d.months;
   const month = picked || (months.some((m) => m.month === d.currentMonth) ? d.currentMonth : months[0]?.month);
   const cur = months.find((m) => m.month === month);
+  const events = (d.events || []).filter((e) => e.date.startsWith(month || ''));
 
   return (
     <>
@@ -45,6 +48,18 @@ export default function MyAttendance() {
                 </tbody>
               </table></div>)}
           </div>
+          {events.length > 0 && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <div className="card-title">Events and holidays in {monthLabel(cur.month)}</div>
+              <div className="table-wrap"><table>
+                <thead><tr><th>Date</th><th>What</th><th>Counted in attendance?</th></tr></thead>
+                <tbody>{events.map((e, i) => (
+                  <tr key={i}><td>{fmtDate(e.date)}</td>
+                    <td><Badge tone={TYPE_TONE[e.type]}>{e.type}</Badge> {e.title}{e.note ? <span className="sec-sub"> · {e.note}</span> : null}</td>
+                    <td>{e.countAttendance ? 'Yes' : 'No: left out of your attendance'}</td></tr>))}
+                </tbody>
+              </table></div>
+            </div>)}
           <div className="card">
             <div className="card-title">All months</div>
             <div className="table-wrap"><table>
