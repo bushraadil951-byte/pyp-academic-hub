@@ -2,7 +2,8 @@ import mongoose from 'mongoose';
 
 // A note on a school day: holiday, PTM, meeting, event... `countAttendance` says whether that day counts as a school day.
 // grade null = whole school; section null = every section of the grade.
-export const EVENT_TYPES = ['Holiday', 'PTM', 'Meeting', 'Event', 'Exam', 'Other'];
+// 'Working day' turns a Saturday or Sunday into a school day (weekends are holidays by default).
+export const EVENT_TYPES = ['Holiday', 'PTM', 'Meeting', 'Event', 'Exam', 'Working day', 'Other'];
 
 const attendanceEventSchema = new mongoose.Schema({
   date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
