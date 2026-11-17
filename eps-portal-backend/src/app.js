@@ -16,6 +16,7 @@ import adminUploadRoutes from './routes/adminUpload.js';
 import analyticsRoutes from './routes/analytics.js';
 import importResultsRoutes from './routes/importResults.js';
 import accountRoutes from './routes/account.js';
+import attendanceRoutes from './routes/attendance.js';
 
 export function createApp() {
   const app = express();
@@ -46,6 +47,7 @@ export function createApp() {
   app.use('/api/teacher', teacherRoutes);
   app.use('/api/student', studentRoutes);
   app.use('/api/marks', marksRoutes);
+  app.use('/api/attendance', attendanceRoutes);
   app.use('/api/profile', profileRoutes);
   app.use('/api/analytics', analyticsRoutes);
   app.use('/api', (_req, _res, next) => next(new HttpError(404, 'Not found')));

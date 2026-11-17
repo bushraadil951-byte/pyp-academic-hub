@@ -31,6 +31,7 @@ export const PORTAL_MODULES = {
     { key: 'assessments', name: 'FA & SA — Formative & Summative', icon: '📋', desc: 'Enter formative and summative marks.', to: '/marks' },
     { key: 'ey', name: 'EY — Early Years', icon: '🧒', desc: 'Nursery, KG-1 and KG-2: enter FA and SA marks and view Aptitude.', to: '/ey' },
     { key: 'ib', name: 'IB Profile Development', icon: '🌱', desc: 'Rate students on Learner Profile attributes and ATL skills. View holistic growth reports per student.', to: '/ib' },
+    { key: 'attendance', name: 'Attendance', icon: '🗓', desc: 'Mark daily attendance for your classes and see each student’s monthly attendance %.', to: '/attendance' },
     { key: 'aptitude', name: 'Aptitude Analytics', icon: '🎯', desc: 'View class aptitude heatmap and per-strand student rankings.', to: '/aptitude' },
   ],
   teacher: [
@@ -40,6 +41,7 @@ export const PORTAL_MODULES = {
     { key: 'ey', name: 'EY — Early Years', icon: '🧒', desc: 'Nursery, KG-1 and KG-2: enter FA and SA marks and view Aptitude.', to: '/ey' },
     { key: 'ib', name: 'IB Profile Development', icon: '🌱', desc: 'Rate your students on Learner Profile attributes and ATL skills each term.', to: '/ib' },
     { key: 'isp', name: 'ISP Profile Development', icon: '📖', desc: 'Rate students on ISP character attributes anytime.', to: '/isp' },
+    { key: 'attendance', name: 'Attendance', icon: '🗓', desc: 'Mark daily attendance for your classes and see each student’s monthly attendance %.', to: '/attendance' },
     { key: 'aptitude', name: 'Aptitude Analytics', icon: '🎯', desc: 'View class aptitude heatmap and per-strand student rankings.', to: '/aptitude' },
   ],
   student: [
@@ -47,6 +49,7 @@ export const PORTAL_MODULES = {
     { key: 'dt', name: 'DT — Diagnostic Tests', icon: '📊', desc: 'Track your diagnostic test progress across every subject.', to: '/student/progress/DT' },
     { key: 'ib', name: 'My IB Profile', icon: '🌱', desc: 'See your Learner Profile growth, self-rate each term, and write reflections.', to: '/student/ib' },
     { key: 'isp', name: 'My ISP Profile', icon: '📖', desc: 'Self-assess your Islamic character attributes anytime.', to: '/student/isp' },
+    { key: 'attendance', name: 'My Attendance', icon: '🗓', desc: 'Check your attendance percentage for every month.', to: '/student/attendance' },
     { key: 'aptitude', name: 'Aptitude Profile', icon: '🎯', desc: 'See your five aptitude strands, calculated from your FA, DT and SA marks.', to: '/student/aptitude' },
   ],
 };

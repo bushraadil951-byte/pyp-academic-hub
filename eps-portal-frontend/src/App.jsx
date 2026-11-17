@@ -37,6 +37,8 @@ import StudentUpload from './pages/admin/StudentUpload.jsx';
 import ImportResults from './pages/admin/ImportResults.jsx';
 import ChangePassword from './pages/ChangePassword.jsx';
 import EmailImport from './pages/admin/EmailImport.jsx';
+import Attendance from './pages/attendance/Attendance.jsx';
+import MyAttendance from './pages/attendance/MyAttendance.jsx';
 
 // Replaces Flask's @login_required(role). Wrong role -> back to the portal; logged out -> login.
 function Guard({ roles, children, allowMustChange = false }) {
@@ -85,6 +87,8 @@ export default function App() {
     ['/student/isp', [STUDENT], 'My ISP Profile', <StudentIsp />, '/student'],
     ['/student/aptitude', [STUDENT], 'My Aptitude Profile', <AptitudeStudent />, '/student'],
     ['/student/progress/:kind', [STUDENT], 'My Progress', <StudentProgress />, '/student'],
+    ['/attendance', [ADMIN, TEACHER], 'Attendance', <Attendance />, '/portal'],
+    ['/student/attendance', [STUDENT], 'My Attendance', <MyAttendance />, '/portal'],
     ['/student', [STUDENT], 'My Dashboard', <StudentDashboard />],
     ['/student/scores', [STUDENT], 'My Scores', <StudentScores />, '/student'],
     ['/student/review/:resultId', [STUDENT], 'Review', <StudentReview />, '/student/scores'],
