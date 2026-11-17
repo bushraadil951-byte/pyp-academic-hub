@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useFetch } from '../../components/useFetch.js';
 import { Badge, Empty, Loading, Percent, Stat, fmtDate, pctColor } from '../../components/ui.jsx';
 
-const TYPE_TONE = { Holiday: 'red', PTM: 'blue', Meeting: 'blue', Event: 'amber', Exam: 'amber', Other: 'gray' };
+const TYPE_TONE = { Holiday: 'red', PTM: 'blue', Meeting: 'blue', Event: 'amber', Exam: 'amber', 'Working day': 'green', Other: 'gray' };
 
+const shortMonth = (m) => new Date(`${m}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
 const monthLabel = (m) => new Date(`${m}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
 // Student page: my attendance for a month.
@@ -21,11 +22,27 @@ export default function MyAttendance() {
   return (
     <>
       <div className="sec-header">
-        <div><div className="sec-title">My attendance</div><div className="sec-sub">{d.student.grade}{d.student.section ? ` · ${d.student.section}` : ''} · minimum {d.minPercent}% each month</div></div>
+        <div><div className="sec-title">My attendance</div><div className="sec-sub">{d.student.grade}{d.student.section ? ` · ${d.student.section}` : ''} · minimum {d.minPercent}% each month</div>
+          <div className="sec-sub">Saturdays and Sundays are holidays unless the school sets them as working days.</div></div>
         {months.length > 0 && (
           <select className="form-input" style={{ width: 200 }} value={month} onChange={(e) => setPicked(e.target.value)} aria-label="Month">
             {months.map((m) => <option key={m.month} value={m.month}>{monthLabel(m.month)}</option>)}
           </select>)}
+      </div>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-title">Semester and annual attendance</div>
+        <div className="table-wrap"><table>
+          <thead><tr><th>Period</th><th>Working days</th><th>Days absent</th><th>Attendance</th></tr></thead>
+          <tbody>
+            {[['Semester I', `${shortMonth(d.terms.sem1Start)} to ${shortMonth(d.terms.sem1End)}`, d.semesters.sem1],
+              ['Semester II', `${shortMonth(d.terms.sem2Start)} to ${shortMonth(d.terms.sem2End)}`, d.semesters.sem2],
+              ['Whole year', 'Semester I + Semester II', d.semesters.annual]].map(([name, range, x]) => (
+              <tr key={name}>
+                <td><strong>{name}</strong><div className="sec-sub">{range}</div></td>
+                <td>{x.workingDays}</td><td>{x.absentDays}</td><td>{x.percent === null ? '—' : <Percent value={x.percent} />}</td>
+              </tr>))}
+          </tbody>
+        </table></div>
       </div>
       {!cur ? <div className="card"><Empty>No attendance has been recorded for you yet.</Empty></div> : (
         <>
