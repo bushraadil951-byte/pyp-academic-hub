@@ -4,7 +4,7 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, maxlength: 100 },
   username: { type: String, required: true, unique: true, trim: true, maxlength: 50 },
   password: { type: String, required: true },          // bcrypt hash (or a legacy Werkzeug hash after migration)
-  role: { type: String, required: true, enum: ['Resource_Manager', 'teacher', 'student'], index: true },
+  role: { type: String, required: true, enum: ['Resource_Manager', 'teacher', 'student', 'librarian'], index: true },
   grade: { type: String, default: null },
   section: { type: String, default: null },
   viewGrade: { type: String, default: null },
