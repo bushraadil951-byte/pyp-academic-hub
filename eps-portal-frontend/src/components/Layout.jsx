@@ -12,8 +12,11 @@ const ASSESS = ['Assessments', [['/marks/DT', BarChart3, 'Diagnostic Tests (DT)'
 const NAV = {
   [ROLES.ADMIN]: [
     ['Main', [['/portal', Home, 'Home']]],
-    ['Manage', [['/admin/students', GraduationCap, 'Students'], ['/admin/teachers', Users, 'Teachers'], ['/analytics', TrendingUp, 'IBT Analytics']]],
+    ['Manage', [['/admin/students', GraduationCap, 'Students'], ['/admin/teachers', Users, 'Teachers'], ['/admin/librarian', BookOpen, 'Librarian account'], ['/analytics', TrendingUp, 'IBT Analytics']]],
     ASSESS, DEV,
+  ],
+  [ROLES.LIBRARIAN]: [
+    ['Main', [['/portal', Home, 'Home'], ['/library', BookOpen, 'Library']]],
   ],
   [ROLES.TEACHER]: [
     ['Main', [['/portal', Home, 'Home'], ['/teacher/students', GraduationCap, 'Students']]],

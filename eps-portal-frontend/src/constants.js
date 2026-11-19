@@ -19,11 +19,14 @@ export const SECTIONS_BY_SUBJECT = {
   Reasoning: ['Verbal Reasoning', 'Non-Verbal Reasoning', 'Logical Thinking', 'Pattern Recognition'],
 };
 
-export const ROLES = { ADMIN: 'Resource_Manager', TEACHER: 'teacher', STUDENT: 'student' };
-export const ROLE_LABELS = { Resource_Manager: 'Administrator', teacher: 'Teacher', student: 'Student' };
+export const ROLES = { ADMIN: 'Resource_Manager', TEACHER: 'teacher', STUDENT: 'student', LIBRARIAN: 'librarian' };
+export const ROLE_LABELS = { Resource_Manager: 'Administrator', teacher: 'Teacher', student: 'Student', librarian: 'Librarian' };
 
 // Portal tiles per role. `to` is a React route; modules not yet ported point to /soon/:key.
 export const PORTAL_MODULES = {
+  librarian: [
+    { key: 'library', name: 'Library', icon: '📚', desc: 'Issue and return books, and manage the books and sections in the library.', to: '/library' },
+  ],
   Resource_Manager: [
     { key: 'ibt', name: 'IBT — Mock Tests', icon: '📝', desc: 'Create tests, manage question banks, and review scores and section-wise performance.', to: '/admin/tests' },
     { key: 'dt', name: 'DT — Diagnostic Tests', icon: '📊', desc: 'Enter diagnostic marks, view grade analytics and per-student progress across all DTs.', to: '/marks/DT' },

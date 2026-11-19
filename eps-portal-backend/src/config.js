@@ -26,7 +26,7 @@ export const config = {
   },
 };
 
-export const ROLES = { ADMIN: 'Resource_Manager', TEACHER: 'teacher', STUDENT: 'student' };
+export const ROLES = { ADMIN: 'Resource_Manager', TEACHER: 'teacher', STUDENT: 'student', LIBRARIAN: 'librarian' };
 export const GRADES = ['Grade 3', 'Grade 4', 'Grade 5'];
 export const SUBJECTS = ['English', 'Mathematics', 'Science', 'Reasoning'];
 

@@ -17,6 +17,7 @@ import analyticsRoutes from './routes/analytics.js';
 import importResultsRoutes from './routes/importResults.js';
 import accountRoutes from './routes/account.js';
 import attendanceRoutes from './routes/attendance.js';
+import libraryRoutes from './routes/library.js';
 
 export function createApp() {
   const app = express();
@@ -48,6 +49,7 @@ export function createApp() {
   app.use('/api/student', studentRoutes);
   app.use('/api/marks', marksRoutes);
   app.use('/api/attendance', attendanceRoutes);
+  app.use('/api/library', libraryRoutes);
   app.use('/api/profile', profileRoutes);
   app.use('/api/analytics', analyticsRoutes);
   app.use('/api', (_req, _res, next) => next(new HttpError(404, 'Not found')));
