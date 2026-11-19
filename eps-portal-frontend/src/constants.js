@@ -19,8 +19,8 @@ export const SECTIONS_BY_SUBJECT = {
   Reasoning: ['Verbal Reasoning', 'Non-Verbal Reasoning', 'Logical Thinking', 'Pattern Recognition'],
 };
 
-export const ROLES = { ADMIN: 'Resource_Manager', TEACHER: 'teacher', STUDENT: 'student' };
-export const ROLE_LABELS = { Resource_Manager: 'Administrator', teacher: 'Teacher', student: 'Student' };
+export const ROLES = { ADMIN: 'Resource_Manager', TEACHER: 'teacher', STUDENT: 'student', LIBRARIAN: 'librarian' };
+export const ROLE_LABELS = { Resource_Manager: 'Administrator', teacher: 'Teacher', student: 'Student', librarian: 'Librarian' };
 
 // Portal tiles per role. `to` is a React route; modules not yet ported point to /soon/:key.
 export const PORTAL_MODULES = {
