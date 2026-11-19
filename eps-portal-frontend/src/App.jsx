@@ -39,6 +39,8 @@ import ChangePassword from './pages/ChangePassword.jsx';
 import EmailImport from './pages/admin/EmailImport.jsx';
 import Attendance from './pages/attendance/Attendance.jsx';
 import MyAttendance from './pages/attendance/MyAttendance.jsx';
+import Library from './pages/library/Library.jsx';
+import LibrarianAccount from './pages/library/LibrarianAccount.jsx';
 
 // Replaces Flask's @login_required(role). Wrong role -> back to the portal; logged out -> login.
 function Guard({ roles, children, allowMustChange = false }) {
@@ -52,9 +54,9 @@ function Guard({ roles, children, allowMustChange = false }) {
 
 export default function App() {
   const { user } = useAuth();
-  const { ADMIN, TEACHER, STUDENT } = ROLES;
+  const { ADMIN, TEACHER, STUDENT, LIBRARIAN } = ROLES;
   const routes = [
-    ['/portal', [ADMIN, TEACHER, STUDENT], 'Academic Hub', <PortalHome />],
+    ['/portal', [ADMIN, TEACHER, STUDENT, LIBRARIAN], 'Academic Hub', <PortalHome />],
     ['/admin', [ADMIN], 'Dashboard', <AdminDashboard />],
     ['/admin/students', [ADMIN], 'Students', <AdminStudents />, '/admin'],
     ['/admin/teachers', [ADMIN], 'Teachers', <AdminTeachers />, '/admin'],
@@ -93,6 +95,8 @@ export default function App() {
     ['/student/scores', [STUDENT], 'My Scores', <StudentScores />, '/student'],
     ['/student/review/:resultId', [STUDENT], 'Review', <StudentReview />, '/student/scores'],
     ['/admin/emails', [ADMIN], 'Import Emails', <EmailImport />, '/admin/students'],
+    ['/library', [LIBRARIAN], 'Library', <Library />, '/portal'],
+    ['/admin/librarian', [ADMIN], 'Librarian Account', <LibrarianAccount />, '/admin'],
   ];
 
   return (
