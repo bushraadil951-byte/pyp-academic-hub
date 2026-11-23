@@ -10,9 +10,12 @@ import { round1, safeAvg } from './math.js';
 export const EY_GRADES = ['Nursery', 'KG-1', 'KG-2'];
 export const SUBJECTS = ['English', 'Hindi', 'Urdu', 'Maths', 'Science', 'ICT', 'Arts', 'PE', 'Islamic Studies'];
 export const HOME_ROOM = 'ALL';                                                                  // an assignment meaning "all subjects of this class"
-export const DEFAULT_SETTINGS = { weights: { SA: 50, DT: 30, IBT: 20 }, meeting: 60, exceeding: 80 };
+// weights: Grades 3-5 (SA, DT, IBT).  weights12: Grades 1-2 (SA, DT).  Early Years is always SA only (100%).
+export const DEFAULT_SETTINGS = { weights: { SA: 35, DT: 35, IBT: 30 }, weights12: { SA: 50, DT: 50 }, meeting: 60, exceeding: 80 };
+export const IBT_SUBJECTS = ['English', 'Maths', 'Science'];                                    // the only subjects with IBT, and only in Grades 3-5
 
-export const typesFor = (grade) => (EY_GRADES.includes(grade) ? ['SA'] : ['Grade 1', 'Grade 2'].includes(grade) ? ['SA', 'DT'] : ['SA', 'DT', 'IBT']);
+export const typesFor = (grade, subject) => (EY_GRADES.includes(grade) ? ['SA'] : ['Grade 1', 'Grade 2'].includes(grade) ? ['SA', 'DT'] : IBT_SUBJECTS.includes(subject) ? ['SA', 'DT', 'IBT'] : ['SA', 'DT']);
+const weightsFor = (grade, settings) => (EY_GRADES.includes(grade) ? { SA: 100 } : ['Grade 1', 'Grade 2'].includes(grade) ? (settings.weights12 || DEFAULT_SETTINGS.weights12) : settings.weights);
 const IBT_NAME = { Maths: 'Mathematics' };               // the IBT mock tests call it Mathematics
 
 export function bandOf(pct, settings) {
@@ -70,7 +73,8 @@ export function buildLookups({ students, sheets, tests, results }) {
 // One subject, one section: average % per assessment type, and the combined (weighted) figure.
 export function scoreSubject(lookups, grade, section, subject, settings) {
   const ids = lookups.roster.get(`${grade}|${section}`) || [];
-  const types = typesFor(grade);
+  const types = typesFor(grade, subject);
+  const W = weightsFor(grade, settings);
   const by = {};
   for (const type of types) {
     const vals = [];
@@ -83,7 +87,7 @@ export function scoreSubject(lookups, grade, section, subject, settings) {
   const have = types.filter((t) => by[t]);
   let combined = null;
   if (have.length) {
-    const w = have.map((t) => Math.max(0, Number(settings.weights[t]) || 0));
+    const w = have.map((t) => Math.max(0, Number(W[t]) || 0));
     const total = w.reduce((a, b) => a + b, 0);
     combined = round1(total > 0 ? have.reduce((s, t, i) => s + by[t].avg * w[i], 0) / total : safeAvg(have.map((t) => by[t].avg)));
   }
