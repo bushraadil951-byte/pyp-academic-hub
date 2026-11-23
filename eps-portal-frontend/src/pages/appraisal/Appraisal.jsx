@@ -32,7 +32,7 @@ function TeacherSheet({ id, onBack }) {
   const subjects = bySubject(d.rows, d.settings);
   const download = () => downloadCsv(`appraisal-${d.teacher.name.replace(/\s+/g, '-')}.csv`, [
     ['Teacher', 'Grade', 'Section', 'Subject', 'Role', 'Students', 'SA %', 'DT %', 'IBT %', 'Student Achievement %', 'Teacher Performance Descriptor', 'Missing'],
-    ...d.rows.map((r) => [d.teacher.name, r.grade, r.section, r.subject, r.homeRoom ? 'Home room' : 'Subject teacher', r.students, r.by?.SA?.avg ?? '', r.by?.DT?.avg ?? '', r.by?.IBT?.avg ?? '', r.combined ?? '', r.band ? L[r.band] : '', (r.missing || []).join(' ')]),
+    ...d.rows.map((r) => [d.teacher.name, r.grade, r.section, r.subject, r.role, r.students, r.by?.SA?.avg ?? '', r.by?.DT?.avg ?? '', r.by?.IBT?.avg ?? '', r.combined ?? '', r.band ? L[r.band] : '', (r.missing || []).join(' ')]),
     [], ['Overall', '', '', '', '', '', '', '', '', d.overall ?? '', d.band ? L[d.band] : '', ''],
   ]);
   return (
@@ -66,7 +66,7 @@ function TeacherSheet({ id, onBack }) {
             <div className="card-title">Each section</div>
             <div className="table-wrap"><table>
               <thead><tr><th>Class</th><th>Student Achievement</th><th>Teacher Performance Descriptor</th></tr></thead>
-              <tbody>{d.sections.map((s) => <tr key={`${s.grade}${s.section}`}><td>{s.grade} {s.section}</td><td>{num(s.average ?? s.avg)}</td><td><Band band={s.band} labels={L} /></td></tr>)}</tbody>
+              <tbody>{d.sections.map((s) => <tr key={`${s.grade}${s.section}`}><td>{s.grade} {s.section}</td><td>{num(s.combined)}</td><td><Band band={s.band} labels={L} /></td></tr>)}</tbody>
             </table></div>
           </div>
           <div className="card">
@@ -75,7 +75,7 @@ function TeacherSheet({ id, onBack }) {
               <thead><tr><th>Class</th><th>Subject</th><th>Role</th><th>Students</th><th>SA</th><th>DT</th><th>IBT</th><th>Student Achievement</th><th>Teacher Performance Descriptor</th></tr></thead>
               <tbody>{d.rows.map((r, i) => (
                 <tr key={i}>
-                  <td>{r.grade} {r.section}</td><td>{r.subject}</td><td>{r.homeRoom ? 'Home room' : 'Subject'}</td><td>{r.students}</td>
+                  <td>{r.grade} {r.section}</td><td>{r.subject}</td><td>{r.role}</td><td>{r.students}</td>
                   <td>{num(r.by?.SA?.avg)}</td><td>{num(r.by?.DT?.avg)}</td><td>{num(r.by?.IBT?.avg)}</td>
                   <td><strong>{num(r.combined)}</strong>{r.missing?.length ? <div className="sec-sub">no {r.missing.join(', ')} yet</div> : null}</td>
                   <td><Band band={r.band} labels={L} /></td>
