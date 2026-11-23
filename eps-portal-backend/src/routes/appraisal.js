@@ -18,7 +18,7 @@ const GRADES = ['Nursery', 'KG-1', 'KG-2', 'Grade 1', 'Grade 2', 'Grade 3', 'Gra
 
 async function getSettings() {
   const d = await AppraisalSettings.findOne({ key: 'settings' }).lean();
-  return d ? { weights: { ...DEFAULT_SETTINGS.weights, ...d.weights }, meeting: d.meeting ?? DEFAULT_SETTINGS.meeting, exceeding: d.exceeding ?? DEFAULT_SETTINGS.exceeding } : DEFAULT_SETTINGS;
+  return d ? { weights: { ...DEFAULT_SETTINGS.weights, ...d.weights }, weights12: { ...DEFAULT_SETTINGS.weights12, ...d.weights12 }, meeting: d.meeting ?? DEFAULT_SETTINGS.meeting, exceeding: d.exceeding ?? DEFAULT_SETTINGS.exceeding } : DEFAULT_SETTINGS;
 }
 
 // ── Settings ─────────────────────────────────────────────────────────────────
@@ -33,11 +33,19 @@ router.put('/settings', wrap(async (req, res) => {
     weights[k] = v;
   }
   if (weights.SA + weights.DT + weights.IBT <= 0) throw bad('At least one weight must be more than 0.');
+  const w12 = req.body.weights12 || {};
+  const weights12 = {};
+  for (const k of ['SA', 'DT']) {
+    const v = Number(w12[k]);
+    if (!Number.isFinite(v) || v < 0 || v > 100) throw bad(`The Grades 1–2 weight for ${k} must be a number from 0 to 100.`);
+    weights12[k] = v;
+  }
+  if (weights12.SA + weights12.DT <= 0) throw bad('At least one Grades 1–2 weight must be more than 0.');
   const meeting = Number(req.body.meeting), exceeding = Number(req.body.exceeding);
   if (!Number.isFinite(meeting) || !Number.isFinite(exceeding) || meeting <= 0 || exceeding > 100 || meeting >= exceeding) {
     throw bad('Meeting Expectation must start below Exceeding Expectation, both between 0 and 100.');
   }
-  await AppraisalSettings.findOneAndUpdate({ key: 'settings' }, { $set: { weights, meeting, exceeding } }, { upsert: true, new: true, setDefaultsOnInsert: true });
+  await AppraisalSettings.findOneAndUpdate({ key: 'settings' }, { $set: { weights, weights12, meeting, exceeding } }, { upsert: true, new: true, setDefaultsOnInsert: true });
   res.json({ ...(await getSettings()), labels: BAND_LABELS });
 }));
 

@@ -70,7 +70,7 @@ function TeacherSheet({ id, onBack }) {
             </table></div>
           </div>
           <div className="card">
-            <div className="card-title">Subject by subject</div>
+            <div className="card-title">Subject by subject (each class and subject taught)</div>
             <div className="table-wrap"><table>
               <thead><tr><th>Class</th><th>Subject</th><th>Role</th><th>Students</th><th>SA</th><th>DT</th><th>IBT</th><th>Student Achievement</th><th>Teacher Performance Descriptor</th></tr></thead>
               <tbody>{d.rows.map((r, i) => (
@@ -202,12 +202,12 @@ function Settings() {
   const { data: d, loading, error, reload } = useFetch('/appraisal/settings');
   const [f, setF] = useState(null);
   const [saving, setSaving] = useState(false);
-  useEffect(() => { if (d) setF({ SA: d.weights.SA, DT: d.weights.DT, IBT: d.weights.IBT, meeting: d.meeting, exceeding: d.exceeding }); }, [d]);
+  useEffect(() => { if (d) setF({ SA: d.weights.SA, DT: d.weights.DT, IBT: d.weights.IBT, SA12: d.weights12.SA, DT12: d.weights12.DT, meeting: d.meeting, exceeding: d.exceeding }); }, [d]);
   if (loading || !f) return <Loading />;
   if (error) return <div className="alert alert-error">{error.message}</div>;
   const save = async () => {
     setSaving(true);
-    try { await api.put('/appraisal/settings', { weights: { SA: f.SA, DT: f.DT, IBT: f.IBT }, meeting: f.meeting, exceeding: f.exceeding }); flash('Settings saved.'); reload(); }
+    try { await api.put('/appraisal/settings', { weights: { SA: f.SA, DT: f.DT, IBT: f.IBT }, weights12: { SA: f.SA12, DT: f.DT12 }, meeting: f.meeting, exceeding: f.exceeding }); flash('Settings saved.'); reload(); }
     catch (e) { flash(e.message, 'error'); } finally { setSaving(false); }
   };
   const input = (k, label) => (
@@ -219,7 +219,11 @@ function Settings() {
   return (
     <div className="card" style={{ maxWidth: 520 }}>
       <div className="card-title">How the score is built</div>
-      <p className="sec-sub" style={{ marginBottom: 12 }}>Weights apply to Grades 3–5. Where a grade does not use an assessment, or its results are not in yet, the remaining weights are rescaled so they still add up.</p>
+      <p className="sec-sub" style={{ marginBottom: 12 }}>Early Years: SA only (100%). If a type has no results yet, the remaining weights are rescaled.</p>
+      <div className="card-title">Grades 1–2 (SA + DT)</div>
+      {input('SA12', 'SA weight')}{input('DT12', 'DT weight')}
+      <div className="card-title" style={{ marginTop: 14 }}>Grades 3–5 (SA + DT + IBT)</div>
+      <p className="sec-sub" style={{ marginBottom: 8 }}>IBT counts only for English, Maths and Science. Other subjects use SA + DT.</p>
       {input('SA', 'SA weight')}{input('DT', 'DT weight')}{input('IBT', 'IBT weight')}
       <div className="card-title" style={{ marginTop: 14 }}>Descriptors</div>
       {input('meeting', 'Meeting Expectations from (%)')}{input('exceeding', 'Exceeding Expectation from (%)')}
