@@ -53,6 +53,7 @@ export function createApp() {
   app.use('/api/library', libraryRoutes);
   app.use('/api/profile', profileRoutes);
   app.use('/api/analytics', analyticsRoutes);
+  app.use('/api/appraisal', appraisalRoutes);
   app.use('/api', (_req, _res, next) => next(new HttpError(404, 'Not found')));
 
   // Serve the built React app from this same server, so frontend and API run as one service.
