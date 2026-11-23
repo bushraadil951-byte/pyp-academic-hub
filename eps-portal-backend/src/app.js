@@ -18,6 +18,7 @@ import importResultsRoutes from './routes/importResults.js';
 import accountRoutes from './routes/account.js';
 import attendanceRoutes from './routes/attendance.js';
 import libraryRoutes from './routes/library.js';
+import appraisalRoutes from './routes/appraisal.js';
 
 export function createApp() {
   const app = express();
