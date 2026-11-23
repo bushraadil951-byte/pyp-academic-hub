@@ -41,6 +41,7 @@ import Attendance from './pages/attendance/Attendance.jsx';
 import MyAttendance from './pages/attendance/MyAttendance.jsx';
 import Library from './pages/library/Library.jsx';
 import LibrarianAccount from './pages/library/LibrarianAccount.jsx';
+import Appraisal from './pages/appraisal/Appraisal.jsx';
 
 // Replaces Flask's @login_required(role). Wrong role -> back to the portal; logged out -> login.
 function Guard({ roles, children, allowMustChange = false }) {
@@ -60,6 +61,7 @@ export default function App() {
     ['/admin', [ADMIN], 'Dashboard', <AdminDashboard />],
     ['/admin/students', [ADMIN], 'Students', <AdminStudents />, '/admin'],
     ['/admin/teachers', [ADMIN], 'Teachers', <AdminTeachers />, '/admin'],
+    ['/admin/appraisal', [ADMIN], 'Teacher appraisal', <Appraisal />, '/portal'],
     ['/admin/students/upload', [ADMIN], 'Upload Students', <StudentUpload />, '/admin/students'],
     ['/analytics', [ADMIN, TEACHER], 'IBT Analytics', <IbtAnalytics />, '/portal'],
     ['/admin/tests', [ADMIN], 'IBT Mock Tests', <AdminTests />, '/portal'],

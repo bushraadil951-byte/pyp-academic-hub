@@ -36,6 +36,7 @@ export const PORTAL_MODULES = {
     { key: 'ib', name: 'IB Profile Development', icon: '🌱', desc: 'Rate students on Learner Profile attributes and ATL skills. View holistic growth reports per student.', to: '/ib' },
     { key: 'attendance', name: 'Attendance', icon: '🗓', desc: 'Mark daily attendance for your classes and see each student’s monthly attendance %.', to: '/attendance' },
     { key: 'aptitude', name: 'Aptitude Analytics', icon: '🎯', desc: 'View class aptitude heatmap and per-strand student rankings.', to: '/aptitude' },
+    { key: 'appraisal', name: 'Teacher Appraisal', icon: '🏅', desc: 'Teachers’ performance based on their students’ SA, DT and IBT results. Admin only.', to: '/admin/appraisal' },
   ],
   teacher: [
     { key: 'ibt', name: 'IBT — Mock Tests', icon: '📝', desc: 'View student scores and section-wise analytics for mock tests.', to: '/teacher' },
