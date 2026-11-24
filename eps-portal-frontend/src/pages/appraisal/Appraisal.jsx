@@ -104,6 +104,95 @@ function Reports() {
   );
 }
 
+
+const SUB_LABEL = { Science: 'UOI' };
+const KINDS = [['DT', 'Diagnostic Tests (DT)'], ['SA', 'Summative (SA)'], ['APPRAISAL', 'Teacher appraisal (SA + DT + IBT)']];
+const pc = (v) => (v == null ? '' : `${v.toFixed(1)}%`);
+
+// Performance Classification Report: ME and EE counts and percentages for every class and subject.
+function Classification() {
+  const [kind, setKind] = useState('DT');
+  const [number, setNumber] = useState('all');
+  const [teacher, setTeacher] = useState('');
+  const { data: tl } = useFetch('/appraisal/assignments');
+  const qs = `kind=${kind}&number=${number}${kind === 'APPRAISAL' && teacher ? `&teacher=${teacher}` : ''}`;
+  const { data: d, loading, error } = useFetch(`/appraisal/classification?${qs}`);
+
+  const title = kind === 'APPRAISAL' ? 'Performance Classification Report (Teacher appraisal)' : `Performance Classification Report (${kind})`;
+  const download = () => {
+    const subs = d.subjects;
+    const rows = [
+      [title + (d.teacher ? ` — ${d.teacher.name}` : '')],
+      [`ME (Meeting Expectations): students scoring between ${d.settings.meeting}% and ${d.settings.exceeding - 1}% | EE (Exceeding Expectations): students scoring ${d.settings.exceeding}% and above.`],
+      ['ME % / EE %: percentage of students achieving ME/EE out of total students assessed in that subject.'],
+      ['Note: Total Students = number of students in the respective section.'], [],
+      ['Grade', 'Section', 'Total Students', ...subs.flatMap((x) => [SUB_LABEL[x] || x, '', '', ''])],
+      ['', '', '', ...subs.flatMap(() => ['ME Count', 'ME %', 'EE Count', 'EE %'])],
+    ];
+    let last = '';
+    for (const r of d.rows) {
+      rows.push([r.grade === last ? '' : r.grade.replace('Grade ', ''), r.section, r.students, ...subs.flatMap((x) => { const c = r.cells[x]; return c ? [c.me, pc(c.mePct), c.ee, pc(c.eePct)] : ['', '', '', '']; })]);
+      last = r.grade;
+    }
+    rows.push(['Total->', '', d.totalStudents, ...subs.flatMap((x) => { const c = d.total[x]; return c ? [c.me, pc(c.mePct), c.ee, pc(c.eePct)] : ['', '', '', '']; })]);
+    rows.push(['Average', '', '', ...subs.flatMap((x) => { const c = d.average[x]; return c ? ['', pc(c.mePct), '', pc(c.eePct)] : ['', '', '', '']; })]);
+    downloadCsv(`classification-${kind}${d.teacher ? '-' + d.teacher.name.replace(/\s+/g, '-') : ''}.csv`, rows);
+  };
+
+  const th = { textAlign: 'center' };
+  return (
+    <>
+      <div className="card" style={{ marginBottom: 16, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <select className="form-input" style={{ width: 280 }} value={kind} onChange={(e) => { setKind(e.target.value); setNumber('all'); }} aria-label="Report type">
+          {KINDS.map(([k, n]) => <option key={k} value={k}>{n}</option>)}
+        </select>
+        {kind !== 'APPRAISAL' && (
+          <select className="form-input" style={{ width: 200 }} value={number} onChange={(e) => setNumber(e.target.value)} aria-label="Assessment">
+            <option value="all">All {kind}s (averaged)</option>
+            {(d?.numbers?.[kind] || []).map((n) => <option key={n} value={n}>{kind} {n}</option>)}
+          </select>)}
+        {kind === 'APPRAISAL' && (
+          <select className="form-input" style={{ width: 260 }} value={teacher} onChange={(e) => setTeacher(e.target.value)} aria-label="Teacher">
+            <option value="">Whole school (all classes)</option>
+            {(tl?.teachers || []).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>)}
+        <div style={{ flex: 1 }} />
+        <button className="btn btn-secondary" onClick={download} disabled={!d?.rows?.length}>Download CSV</button>
+        <button className="btn btn-secondary" onClick={() => window.print()}>Print</button>
+      </div>
+      {loading ? <Loading /> : error ? <div className="alert alert-error">{error.message}</div> : !d.rows.length ? <Empty>No results for this selection yet.</Empty> : (
+        <div className="card">
+          <div className="card-title">{title}{d.teacher ? ` — ${d.teacher.name}` : ''}</div>
+          <p className="sec-sub" style={{ marginBottom: 10 }}>
+            ME: {d.settings.meeting}% to below {d.settings.exceeding}% · EE: {d.settings.exceeding}% and above · ME % and EE % are out of the students assessed in that subject.
+            {kind === 'APPRAISAL' && ' Each student’s score uses the appraisal weights (SA, DT and IBT where they apply).'}
+          </p>
+          <div className="table-wrap"><table style={{ fontSize: '.85rem' }}>
+            <thead>
+              <tr><th rowSpan={2}>Grade</th><th rowSpan={2}>Section</th><th rowSpan={2}>Total Students</th>{d.subjects.map((x) => <th key={x} colSpan={4} style={th}>{SUB_LABEL[x] || x}</th>)}</tr>
+              <tr>{d.subjects.flatMap((x) => ['ME Count', 'ME %', 'EE Count', 'EE %'].map((h) => <th key={x + h} style={th}>{h}</th>))}</tr>
+            </thead>
+            <tbody>
+              {d.rows.map((r, i) => (
+                <tr key={`${r.grade}${r.section}`}>
+                  <td>{i && d.rows[i - 1].grade === r.grade ? '' : r.grade.replace('Grade ', '')}</td><td>{r.section}</td><td>{r.students}</td>
+                  {d.subjects.flatMap((x) => { const c = r.cells[x]; return c ? [c.me, pc(c.mePct), c.ee, pc(c.eePct)].map((v, j) => <td key={x + j} style={th}>{v}</td>) : [0, 1, 2, 3].map((j) => <td key={x + j} style={th}>—</td>); })}
+                </tr>))}
+              <tr style={{ fontWeight: 700, background: 'var(--surface2)' }}>
+                <td colSpan={2}>Total →</td><td>{d.totalStudents}</td>
+                {d.subjects.flatMap((x) => { const c = d.total[x]; return c ? [c.me, pc(c.mePct), c.ee, pc(c.eePct)].map((v, j) => <td key={x + j} style={th}>{v}</td>) : [0, 1, 2, 3].map((j) => <td key={x + j} style={th}>—</td>); })}
+              </tr>
+              <tr style={{ fontWeight: 700, background: 'var(--surface2)' }}>
+                <td colSpan={3}>Average of sections</td>
+                {d.subjects.flatMap((x) => { const c = d.average[x]; return c ? ['', pc(c.mePct), '', pc(c.eePct)].map((v, j) => <td key={x + j} style={th}>{v}</td>) : [0, 1, 2, 3].map((j) => <td key={x + j} style={th}>—</td>); })}
+              </tr>
+            </tbody>
+          </table></div>
+        </div>)}
+    </>
+  );
+}
+
 function Overview() {
   const { data: d, loading, error } = useFetch('/appraisal/overview');
   const [open, setOpen] = useState(null);
@@ -235,7 +324,7 @@ function Settings() {
 
 export default function Appraisal() {
   const [tab, setTab] = useState('overview');
-  const tabs = [['overview', 'Appraisal'], ['reports', 'Reports'], ['assign', 'Teaching assignments'], ['settings', 'Settings']];
+  const tabs = [['overview', 'Appraisal'], ['reports', 'Reports'], ['class', 'Classification report'], ['assign', 'Teaching assignments'], ['settings', 'Settings']];
   return (
     <>
       <div className="sec-header"><div><div className="sec-title">Teacher appraisal</div><div className="sec-sub">Based on student results. Visible to administrators only.</div></div></div>
@@ -244,6 +333,7 @@ export default function Appraisal() {
       </div>
       {tab === 'overview' && <Overview />}
       {tab === 'reports' && <Reports />}
+      {tab === 'class' && <Classification />}
       {tab === 'assign' && <Assignments />}
       {tab === 'settings' && <Settings />}
     </>

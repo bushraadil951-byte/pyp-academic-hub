@@ -48,8 +48,13 @@ export function buildLookups({ students, sheets, tests, results }) {
     }
   }
   const marks = new Map();
+  const byNum = new Map();                                                   // id -> Map('KIND|Subject' -> Map(number -> percent))
   for (const [key, pct] of slot) {
-    const [id, kind, , subject] = key.split('|');
+    const [id, kind, number, subject] = key.split('|');
+    if (!byNum.has(id)) byNum.set(id, new Map());
+    const nk = `${kind}|${subject}`;
+    if (!byNum.get(id).has(nk)) byNum.get(id).set(nk, new Map());
+    byNum.get(id).get(nk).set(number, pct);
     if (!marks.has(id)) marks.set(id, new Map());
     const mk = `${kind}|${subject}`;
     if (!marks.get(id).has(mk)) marks.get(id).set(mk, []);
@@ -67,7 +72,7 @@ export function buildLookups({ students, sheets, tests, results }) {
     if (!ibt.get(id).has(subject)) ibt.get(id).set(subject, []);
     ibt.get(id).get(subject).push(r.percent);
   }
-  return { roster, marks, ibt };
+  return { roster, marks, ibt, byNum };
 }
 
 // One subject, one section: average % per assessment type, and the combined (weighted) figure.
@@ -134,4 +139,74 @@ export function computeAppraisals({ assignments, lookups, settings }) {
     t.counted = all.length;
   }
   return out;
+}
+
+
+// ── Performance classification (ME / EE counts per class and subject) ────────
+export const CLASS_SUBJECTS = ['English', 'Hindi', 'Maths', 'Science', 'Urdu', 'ICT'];           // Science is shown as UOI
+const avg = (a) => (a && a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+
+// One percentage per student who has results in this subject.
+//   kind 'DT' | 'SA'  -> the student's average over the chosen numbered assessment (number 'all' = every one, averaged)
+//   kind 'APPRAISAL'  -> the student's own weighted score using the appraisal rules (SA / DT / IBT and their weights)
+export function studentPercents(lookups, grade, section, subject, { kind, number = 'all', settings }) {
+  const ids = lookups.roster.get(`${grade}|${section}`) || [];
+  const out = [];
+  const typeAvg = (id, type) => {
+    if (type === 'IBT') return avg(lookups.ibt.get(id)?.get(IBT_NAME[subject] || subject));
+    const key = `${type}|${subject}`;
+    if (type === kind && number !== 'all') { const v = lookups.byNum.get(id)?.get(key)?.get(String(number)); return v === undefined ? null : v; }
+    return avg(lookups.marks.get(id)?.get(key));
+  };
+  for (const id of ids) {
+    if (kind === 'DT' || kind === 'SA') {
+      if (kind === 'DT' && EY_GRADES.includes(grade)) continue;
+      const v = typeAvg(id, kind);
+      if (v !== null) out.push(v);
+    } else {
+      const types = typesFor(grade, subject), W = weightsFor(grade, settings);
+      const have = types.map((t) => [t, typeAvg(id, t)]).filter(([, v]) => v !== null);
+      if (!have.length) continue;
+      const w = have.map(([t]) => Math.max(0, Number(W[t]) || 0));
+      const tot = w.reduce((a, b) => a + b, 0);
+      out.push(tot > 0 ? have.reduce((sum, [, v], i) => sum + v * w[i], 0) / tot : avg(have.map(([, v]) => v)));
+    }
+  }
+  return out;
+}
+
+const cell = (vals, settings) => {
+  const n = vals.length;
+  if (!n) return null;
+  const ee = vals.filter((v) => v >= settings.exceeding).length;
+  const me = vals.filter((v) => v >= settings.meeting && v < settings.exceeding).length;
+  return { assessed: n, me, mePct: round1((me / n) * 100), ee, eePct: round1((ee / n) * 100) };
+};
+const gradeNo = (g) => (EY_GRADES.includes(g) ? EY_GRADES.indexOf(g) - 10 : parseInt(String(g).replace(/\D/g, ''), 10) || 99);
+
+// allowed: null (whole school) or Set of 'grade|section|subject' (one teacher's own subjects and classes)
+export function classificationReport({ lookups, settings, kind, number, allowed = null }) {
+  const classes = [...lookups.roster.keys()].map((k) => { const [grade, section] = k.split('|'); return { grade, section, students: lookups.roster.get(k).length }; })
+    .filter((c) => !(kind === 'DT' && EY_GRADES.includes(c.grade)))
+    .sort((a, b) => gradeNo(a.grade) - gradeNo(b.grade) || a.section.localeCompare(b.section));
+  const rows = [];
+  const acc = Object.fromEntries(CLASS_SUBJECTS.map((s) => [s, { assessed: 0, me: 0, ee: 0, mes: [], ees: [] }]));
+  for (const c of classes) {
+    const cells = {};
+    let any = false;
+    for (const sub of CLASS_SUBJECTS) {
+      if (allowed && !allowed.has(`${c.grade}|${c.section}|${sub}`)) { cells[sub] = null; continue; }
+      const x = cell(studentPercents(lookups, c.grade, c.section, sub, { kind, number, settings }), settings);
+      cells[sub] = x;
+      if (x) { any = true; const a = acc[sub]; a.assessed += x.assessed; a.me += x.me; a.ee += x.ee; a.mes.push(x.mePct); a.ees.push(x.eePct); }
+    }
+    if (any) rows.push({ ...c, cells });
+  }
+  const total = {}, average = {};
+  for (const sub of CLASS_SUBJECTS) {
+    const a = acc[sub];
+    total[sub] = a.assessed ? { assessed: a.assessed, me: a.me, mePct: round1((a.me / a.assessed) * 100), ee: a.ee, eePct: round1((a.ee / a.assessed) * 100) } : null;
+    average[sub] = a.mes.length ? { mePct: round1(safeAvg(a.mes)), eePct: round1(safeAvg(a.ees)) } : null;
+  }
+  return { subjects: CLASS_SUBJECTS, rows, total, average, totalStudents: rows.reduce((n, r) => n + r.students, 0) };
 }
