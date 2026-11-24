@@ -9,7 +9,7 @@ import { TeachingAssignment } from '../models/TeachingAssignment.js';
 import { AppraisalSettings } from '../models/AppraisalSettings.js';
 import { requireAuth } from '../middleware/auth.js';
 import { HttpError, bad, notFound, oid, wrap } from '../utils/helpers.js';
-import { BAND_LABELS, DEFAULT_SETTINGS, HOME_ROOM, bandOf, SUBJECTS, buildLookups, computeAppraisals } from '../utils/appraisalMath.js';
+import { classificationReport, BAND_LABELS, DEFAULT_SETTINGS, HOME_ROOM, bandOf, SUBJECTS, buildLookups, computeAppraisals } from '../utils/appraisalMath.js';
 
 const router = Router();
 router.use(requireAuth(ROLES.ADMIN));
@@ -114,7 +114,10 @@ async function compute() {
     assignments: assignments.map((a) => ({ teacher: String(a.teacher), grade: a.grade, section: a.section, subject: a.subject })),
     lookups, settings,
   });
-  return { settings, teachers, byTeacher };
+  const numbers = { DT: [], SA: [] };
+  for (const sh of sheets) { const n = numbers[sh.kind]; if (n && !n.includes(sh.number)) n.push(sh.number); }
+  numbers.DT.sort((a, b) => a - b); numbers.SA.sort((a, b) => a - b);
+  return { settings, teachers, byTeacher, lookups, numbers };
 }
 
 // Every teacher with their overall figure.
@@ -156,6 +159,22 @@ router.get('/reports', wrap(async (_req, res) => {
     grades: group((r) => r.grade, (r) => ({ grade: r.grade })).sort(gradeOrder),
     subjects: group((r) => r.subject, (r) => ({ subject: r.subject })).sort((a, b) => a.subject.localeCompare(b.subject)),
   });
+}));
+
+// Performance classification: ME and EE counts and % per class and subject, with a total and an average row.
+//   ?kind=DT | SA | APPRAISAL   &number=all|1|2…   &teacher=<id> (APPRAISAL only: just that teacher's classes and subjects)
+router.get('/classification', wrap(async (req, res) => {
+  const kind = ['DT', 'SA', 'APPRAISAL'].includes(req.query.kind) ? req.query.kind : 'DT';
+  const number = kind === 'APPRAISAL' || !req.query.number ? 'all' : String(req.query.number);
+  const { settings, teachers, byTeacher, lookups, numbers } = await compute();
+  let allowed = null, teacher = null;
+  if (kind === 'APPRAISAL' && req.query.teacher) {
+    const t = teachers.find((x) => String(x._id) === String(oid(req.query.teacher)));
+    if (!t) throw notFound('Teacher not found.');
+    teacher = { id: String(t._id), name: t.name };
+    allowed = new Set((byTeacher[String(t._id)]?.rows || []).map((r) => `${r.grade}|${r.section}|${r.subject}`));
+  }
+  res.json({ academicYear: ACADEMIC_YEAR, kind, number, numbers, teacher, settings, ...classificationReport({ lookups, settings, kind, number, allowed }) });
 }));
 
 export default router;
