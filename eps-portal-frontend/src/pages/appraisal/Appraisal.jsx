@@ -8,32 +8,26 @@ import { downloadCsv } from '../../csv.js';
 const BAND_TONE = { EE: 'green', ME: 'blue', BME: 'red' };
 const num = (v) => (v == null ? '—' : `${v}%`);
 
-// Consolidates a teacher's rows by subject (e.g. Maths across 1A, 2A and 3A).
-function bySubject(rows, settings) {
-  const m = new Map();
-  for (const r of rows) { if (r.combined == null) continue; const k = r.subject; if (!m.has(k)) m.set(k, { subject: k, classes: [], vals: [] }); const e = m.get(k); e.classes.push(`${r.grade} ${r.section}`); e.vals.push(r.combined); }
-  return [...m.values()].map((e) => {
-    const avg = Math.round((e.vals.reduce((a, b) => a + b, 0) / e.vals.length) * 10) / 10;
-    return { subject: e.subject, classes: e.classes, avg, band: avg >= settings.exceeding ? 'EE' : avg >= settings.meeting ? 'ME' : 'BME' };
-  });
-}
-
 function Band({ band, labels }) {
   if (!band) return <span className="sec-sub">—</span>;
   return <Badge tone={BAND_TONE[band]}>{labels?.[band] || band}</Badge>;
 }
 
 // ── Overview + one teacher's sheet ──────────────────────────────────────────
+const pct1 = (v) => (v == null ? '—' : `${v}%`);
+
 function TeacherSheet({ id, onBack }) {
   const { data: d, loading, error } = useFetch(`/appraisal/teacher/${id}`);
   if (loading) return <Loading />;
   if (error) return <div className="alert alert-error">{error.message}</div>;
   const L = d.labels;
-  const subjects = bySubject(d.rows, d.settings);
+  const T = d.totals || { assessed: 0, me: 0, ee: 0, bme: 0 };
   const download = () => downloadCsv(`appraisal-${d.teacher.name.replace(/\s+/g, '-')}.csv`, [
-    ['Teacher', 'Grade', 'Section', 'Subject', 'Role', 'Students', 'SA %', 'DT %', 'IBT %', 'Student Achievement %', 'Teacher Performance Descriptor', 'Missing'],
-    ...d.rows.map((r) => [d.teacher.name, r.grade, r.section, r.subject, r.role, r.students, r.by?.SA?.avg ?? '', r.by?.DT?.avg ?? '', r.by?.IBT?.avg ?? '', r.combined ?? '', r.band ? L[r.band] : '', (r.missing || []).join(' ')]),
-    [], ['Overall', '', '', '', '', '', '', '', '', d.overall ?? '', d.band ? L[d.band] : '', ''],
+    ['Teacher', 'Grade', 'Section', 'Subject', 'Role', 'Students assessed', 'SA %', 'DT %', 'IBT %', 'Student Achievement %', 'ME count', 'ME %', 'EE count', 'EE %', 'Below ME count', 'ME + EE %', 'Descriptor', 'Missing'],
+    ...d.rows.map((r) => [d.teacher.name, r.grade, r.section, r.subject, r.role, r.cls?.assessed ?? r.students, r.by?.SA?.avg ?? '', r.by?.DT?.avg ?? '', r.by?.IBT?.avg ?? '', r.combined ?? '', r.cls?.me ?? '', r.cls?.mePct ?? '', r.cls?.ee ?? '', r.cls?.eePct ?? '', r.cls?.bme ?? '', r.cls?.moa ?? '', r.band ? L[r.band] : '', (r.missing || []).join(' ')]),
+    [],
+    ['Total', '', '', '', '', T.assessed, '', '', '', '', T.me, '', T.ee, '', T.bme, '', '', ''],
+    ['Average', '', '', '', '', '', '', '', '', d.overall ?? '', '', d.avgMePct ?? '', '', d.avgEePct ?? '', '', d.avgMoa ?? '', d.band ? L[d.band] : '', ''],
   ]);
   return (
     <>
@@ -48,36 +42,45 @@ function TeacherSheet({ id, onBack }) {
       {d.rows.length === 0 ? <Empty>No classes assigned yet. Add them in the “Teaching assignments” tab.</Empty> : (
         <>
           <div className="card" style={{ marginBottom: 16 }}>
-            <div className="card-title">Overall</div>
+            <div className="card-title">Final result</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 28, flexWrap: 'wrap' }}>
-              <div><div className="sec-sub">Student Achievement</div><span style={{ fontSize: '2rem', fontWeight: 700 }}>{num(d.overall)}</span></div>
+              <div><div className="sec-sub">Student Achievement (average mark)</div><span style={{ fontSize: '2rem', fontWeight: 700 }}>{num(d.overall)}</span></div>
+              <div><div className="sec-sub">Students at ME or above (average)</div><span style={{ fontSize: '2rem', fontWeight: 700 }}>{num(d.avgMoa)}</span></div>
               <div><div className="sec-sub">Teacher Performance Descriptor</div><Band band={d.band} labels={L} /></div>
             </div>
-            <div className="sec-sub">Student Achievement is the average of every class and subject this teacher teaches, counted equally ({d.counted} with results). The descriptor is derived from it. It is one input to the appraisal, not a full measure of professional effectiveness.</div>
+            <div className="table-wrap" style={{ marginTop: 12 }}><table>
+              <thead><tr><th /><th>ME count</th><th>ME %</th><th>EE count</th><th>EE %</th><th>Below ME</th></tr></thead>
+              <tbody>
+                <tr><td>Total ({T.assessed} students assessed)</td><td>{T.me}</td><td>{T.assessed ? pct1(Math.round((T.me / T.assessed) * 1000) / 10) : '—'}</td><td>{T.ee}</td><td>{T.assessed ? pct1(Math.round((T.ee / T.assessed) * 1000) / 10) : '—'}</td><td>{T.bme}</td></tr>
+                <tr style={{ fontWeight: 700 }}><td>Average of classes and subjects</td><td /><td>{pct1(d.avgMePct)}</td><td /><td>{pct1(d.avgEePct)}</td><td /></tr>
+              </tbody>
+            </table></div>
+            <div className="sec-sub" style={{ marginTop: 8 }}>ME: {d.settings.meeting}% to below {d.settings.exceeding}% · EE: {d.settings.exceeding}% and above, on each student’s own weighted score. The descriptor comes from the average share of students at ME or above ({d.counted} class-subjects counted): {d.settings.exceeding}% and above is {L.EE}, {d.settings.meeting}% and above is {L.ME}, below that is {L.BME}. It is one input to the appraisal, not a full measure of professional effectiveness.</div>
           </div>
           <div className="card" style={{ marginBottom: 16 }}>
             <div className="card-title">Each subject, across all their classes</div>
             <div className="table-wrap"><table>
-              <thead><tr><th>Subject</th><th>Classes</th><th>Student Achievement</th><th>Teacher Performance Descriptor</th></tr></thead>
-              <tbody>{subjects.map((x) => <tr key={x.subject}><td>{x.subject}</td><td>{x.classes.join(', ')}</td><td><strong>{num(x.avg)}</strong></td><td><Band band={x.band} labels={L} /></td></tr>)}</tbody>
+              <thead><tr><th>Subject</th><th>Classes</th><th>Assessed</th><th>ME</th><th>ME %</th><th>EE</th><th>EE %</th><th>Student Achievement</th><th>Descriptor</th></tr></thead>
+              <tbody>{d.subjects.map((x) => <tr key={x.subject}><td>{x.subject}</td><td>{x.classes.join(', ')}</td><td>{x.assessed}</td><td>{x.me}</td><td>{pct1(x.mePct)}</td><td>{x.ee}</td><td>{pct1(x.eePct)}</td><td>{num(x.achievement)}</td><td><Band band={x.band} labels={L} /></td></tr>)}</tbody>
             </table></div>
           </div>
           <div className="card" style={{ marginBottom: 16 }}>
             <div className="card-title">Each section</div>
             <div className="table-wrap"><table>
-              <thead><tr><th>Class</th><th>Student Achievement</th><th>Teacher Performance Descriptor</th></tr></thead>
-              <tbody>{d.sections.map((s) => <tr key={`${s.grade}${s.section}`}><td>{s.grade} {s.section}</td><td>{num(s.combined)}</td><td><Band band={s.band} labels={L} /></td></tr>)}</tbody>
+              <thead><tr><th>Class</th><th>ME</th><th>EE</th><th>ME + EE % (average)</th><th>Student Achievement</th><th>Descriptor</th></tr></thead>
+              <tbody>{d.sections.map((x) => <tr key={`${x.grade}${x.section}`}><td>{x.grade} {x.section}</td><td>{x.me}</td><td>{x.ee}</td><td>{pct1(x.moa)}</td><td>{num(x.combined)}</td><td><Band band={x.band} labels={L} /></td></tr>)}</tbody>
             </table></div>
           </div>
           <div className="card">
             <div className="card-title">Subject by subject (each class and subject taught)</div>
             <div className="table-wrap"><table>
-              <thead><tr><th>Class</th><th>Subject</th><th>Role</th><th>Students</th><th>SA</th><th>DT</th><th>IBT</th><th>Student Achievement</th><th>Teacher Performance Descriptor</th></tr></thead>
+              <thead><tr><th>Class</th><th>Subject</th><th>Role</th><th>Assessed</th><th>SA</th><th>DT</th><th>IBT</th><th>Student Achievement</th><th>ME</th><th>ME %</th><th>EE</th><th>EE %</th><th>Descriptor</th></tr></thead>
               <tbody>{d.rows.map((r, i) => (
                 <tr key={i}>
-                  <td>{r.grade} {r.section}</td><td>{r.subject}</td><td>{r.role}</td><td>{r.students}</td>
+                  <td>{r.grade} {r.section}</td><td>{r.subject}</td><td>{r.role}</td><td>{r.cls?.assessed ?? r.students}</td>
                   <td>{num(r.by?.SA?.avg)}</td><td>{num(r.by?.DT?.avg)}</td><td>{num(r.by?.IBT?.avg)}</td>
                   <td><strong>{num(r.combined)}</strong>{r.missing?.length ? <div className="sec-sub">no {r.missing.join(', ')} yet</div> : null}</td>
+                  <td>{r.cls?.me ?? '—'}</td><td>{pct1(r.cls?.mePct)}</td><td>{r.cls?.ee ?? '—'}</td><td>{pct1(r.cls?.eePct)}</td>
                   <td><Band band={r.band} labels={L} /></td>
                 </tr>))}</tbody>
             </table></div>
@@ -97,13 +100,13 @@ function Reports() {
       <div className="table-wrap"><table><thead><tr>{head.map((h) => <th key={h}>{h}</th>)}</tr></thead><tbody>{body}</tbody></table></div></div>);
   return (
     <>
-      {table('By grade', ['Grade', 'Class-subjects', 'Student Achievement', 'Descriptor'], d.grades.map((g) => <tr key={g.grade}><td>{g.grade}</td><td>{g.count}</td><td><strong>{num(g.avg)}</strong></td><td><Band band={g.band} labels={L} /></td></tr>))}
-      {table('By subject', ['Subject', 'Class-subjects', 'Student Achievement', 'Descriptor'], d.subjects.map((g) => <tr key={g.subject}><td>{g.subject}</td><td>{g.count}</td><td><strong>{num(g.avg)}</strong></td><td><Band band={g.band} labels={L} /></td></tr>))}
-      {table('By section and subject', ['Class', 'Subject', 'Teacher', 'Role', 'SA', 'DT', 'IBT', 'Student Achievement', 'Descriptor'], d.classes.map((r, i) => <tr key={i}><td>{r.grade} {r.section}</td><td>{r.subject}</td><td>{r.teacher}</td><td>{r.role}</td><td>{num(r.by?.SA?.avg)}</td><td>{num(r.by?.DT?.avg)}</td><td>{num(r.by?.IBT?.avg)}</td><td><strong>{num(r.combined)}</strong></td><td><Band band={r.band} labels={L} /></td></tr>))}
+      <p className="sec-sub" style={{ marginBottom: 12 }}>Student Achievement is the average mark. The descriptor comes from the share of students at ME or above (ME + EE %).</p>
+      {table('By grade', ['Grade', 'Class-subjects', 'Student Achievement', 'ME + EE %', 'Descriptor'], d.grades.map((g) => <tr key={g.grade}><td>{g.grade}</td><td>{g.count}</td><td><strong>{num(g.avg)}</strong></td><td>{num(g.moa)}</td><td><Band band={g.band} labels={L} /></td></tr>))}
+      {table('By subject', ['Subject', 'Class-subjects', 'Student Achievement', 'ME + EE %', 'Descriptor'], d.subjects.map((g) => <tr key={g.subject}><td>{g.subject}</td><td>{g.count}</td><td><strong>{num(g.avg)}</strong></td><td>{num(g.moa)}</td><td><Band band={g.band} labels={L} /></td></tr>))}
+      {table('By section and subject', ['Class', 'Subject', 'Teacher', 'Role', 'SA', 'DT', 'IBT', 'Student Achievement', 'ME + EE %', 'Descriptor'], d.classes.map((r, i) => <tr key={i}><td>{r.grade} {r.section}</td><td>{r.subject}</td><td>{r.teacher}</td><td>{r.role}</td><td>{num(r.by?.SA?.avg)}</td><td>{num(r.by?.DT?.avg)}</td><td>{num(r.by?.IBT?.avg)}</td><td><strong>{num(r.combined)}</strong></td><td>{num(r.moa)}</td><td><Band band={r.band} labels={L} /></td></tr>))}
     </>
   );
 }
-
 
 const SUB_LABEL = { Science: 'UOI' };
 const KINDS = [['DT', 'Diagnostic Tests (DT)'], ['SA', 'Summative (SA)'], ['APPRAISAL', 'Teacher appraisal (SA + DT + IBT)']];
@@ -205,21 +208,22 @@ function Overview() {
   return (
     <>
       <p className="sec-sub" style={{ marginBottom: 12 }}>
-        {d.academicYear}. Early Years uses SA; Grades 1–2 use SA + DT; Grades 3–5 use SA + DT + IBT. {L.EE}: {d.settings.exceeding}% and above · {L.ME}: {d.settings.meeting}% and above · {L.BME}: below {d.settings.meeting}%.
+        {d.academicYear}. Early Years uses SA; Grades 1–2 use SA + DT; Grades 3–5 use SA + DT + IBT. The descriptor comes from the average share of each teacher’s students at ME or above: {L.EE} at {d.settings.exceeding}% and above · {L.ME} at {d.settings.meeting}% and above · {L.BME} below {d.settings.meeting}%.
         {school != null && <> Average across rated teachers: <strong>{school}%</strong>.</>}
       </p>
       <div className="card"><div className="table-wrap"><table>
-        <thead><tr><th>Teacher</th><th>Classes</th><th>Student Achievement</th><th>Teacher Performance Descriptor</th><th /></tr></thead>
+        <thead><tr><th>Teacher</th><th>Classes</th><th>Student Achievement</th><th>Students at ME or above</th><th>Teacher Performance Descriptor</th><th /></tr></thead>
         <tbody>
           {d.teachers.map((t) => (
             <tr key={t.id}>
               <td>{t.name}<div className="sec-sub">{t.email}</div></td>
               <td>{t.assigned ? t.sections.map((s) => `${s.grade} ${s.section}`).join(', ') : <span className="sec-sub">Not assigned</span>}</td>
               <td><strong>{num(t.overall)}</strong></td>
+              <td>{num(t.avgMoa)}</td>
               <td><Band band={t.band} labels={L} /></td>
               <td><button className="btn btn-secondary" onClick={() => setOpen(t.id)}>View sheet</button></td>
             </tr>))}
-          {!d.teachers.length && <tr><td colSpan={5}><Empty>No teachers yet.</Empty></td></tr>}
+          {!d.teachers.length && <tr><td colSpan={6}><Empty>No teachers yet.</Empty></td></tr>}
         </tbody>
       </table></div></div>
     </>
