@@ -121,7 +121,12 @@ export function computeAppraisals({ assignments, lookups, settings }) {
       subjects = SUBJECTS.filter((s) => !taken.has(s) && scoreSubject(lookups, a.grade, a.section, s, settings).combined !== null);
       if (!subjects.length) t.rows.push({ grade: a.grade, section: a.section, subject: 'All subjects', role: 'Home room teacher (HRT)', ...scoreSubject(lookups, a.grade, a.section, '-', settings) });
     }
-    for (const subject of subjects) t.rows.push({ grade: a.grade, section: a.section, subject, role: homeRoom ? 'Home room teacher (HRT)' : 'Subject teacher', ...scoreSubject(lookups, a.grade, a.section, subject, settings) });
+    for (const subject of subjects) {
+      const sc = scoreSubject(lookups, a.grade, a.section, subject, settings);
+      const cls = classify(studentPercents(lookups, a.grade, a.section, subject, { kind: 'APPRAISAL', settings }), settings);
+      // The descriptor follows the share of students at ME or above, not the average mark.
+      t.rows.push({ grade: a.grade, section: a.section, subject, role: homeRoom ? 'Home room teacher (HRT)' : 'Subject teacher', ...sc, cls, band: cls ? bandOf(cls.moa, settings) : null });
+    }
   }
 
   for (const t of Object.values(out)) {
@@ -129,14 +134,38 @@ export function computeAppraisals({ assignments, lookups, settings }) {
     const groups = new Map();
     for (const r of t.rows) {
       const k = `${r.grade}|${r.section}`;
-      if (!groups.has(k)) groups.set(k, { grade: r.grade, section: r.section, students: r.students, vals: [] });
-      if (r.combined !== null) groups.get(k).vals.push(r.combined);
+      if (!groups.has(k)) groups.set(k, { grade: r.grade, section: r.section, students: r.students, vals: [], moas: [], me: 0, ee: 0, bme: 0, assessed: 0 });
+      const g = groups.get(k);
+      if (r.combined !== null) g.vals.push(r.combined);
+      if (r.cls) { g.moas.push(r.cls.moa); g.me += r.cls.me; g.ee += r.cls.ee; g.bme += r.cls.bme; g.assessed += r.cls.assessed; }
     }
-    t.sections = [...groups.values()].map(({ vals, ...g }) => { const combined = vals.length ? round1(safeAvg(vals)) : null; return { ...g, subjects: vals.length, combined, band: bandOf(combined, settings) }; });
+    t.sections = [...groups.values()].map(({ vals, moas, ...g }) => { const combined = vals.length ? round1(safeAvg(vals)) : null; const moa = moas.length ? round1(safeAvg(moas)) : null; return { ...g, subjects: vals.length, combined, moa, band: bandOf(moa, settings) }; });
+
+    // Each subject across all the classes this teacher teaches it in (counts added up, % out of students assessed).
+    const subs = new Map();
+    for (const r of t.rows) {
+      if (!r.cls) continue;
+      if (!subs.has(r.subject)) subs.set(r.subject, { subject: r.subject, classes: [], vals: [], me: 0, ee: 0, bme: 0, assessed: 0 });
+      const x = subs.get(r.subject);
+      x.classes.push(`${r.grade} ${r.section}`); if (r.combined !== null) x.vals.push(r.combined);
+      x.me += r.cls.me; x.ee += r.cls.ee; x.bme += r.cls.bme; x.assessed += r.cls.assessed;
+    }
+    t.subjects = [...subs.values()].map(({ vals, ...x }) => {
+      const moa = round1(((x.me + x.ee) / x.assessed) * 100);
+      return { ...x, achievement: vals.length ? round1(safeAvg(vals)) : null, mePct: round1((x.me / x.assessed) * 100), eePct: round1((x.ee / x.assessed) * 100), moa, band: bandOf(moa, settings) };
+    });
+
+    // Final: totals, the average of the per-class-subject percentages, and the descriptor taken from that average.
+    const withCls = t.rows.filter((r) => r.cls);
     const all = t.rows.filter((r) => r.combined !== null).map((r) => r.combined);
-    t.overall = all.length ? round1(safeAvg(all)) : null;
-    t.band = bandOf(t.overall, settings);
-    t.counted = all.length;
+    t.overall = all.length ? round1(safeAvg(all)) : null;                                    // Student Achievement
+    t.totals = { assessed: 0, me: 0, ee: 0, bme: 0 };
+    for (const r of withCls) for (const k of Object.keys(t.totals)) t.totals[k] += r.cls[k];
+    t.avgMePct = withCls.length ? round1(safeAvg(withCls.map((r) => r.cls.mePct))) : null;
+    t.avgEePct = withCls.length ? round1(safeAvg(withCls.map((r) => r.cls.eePct))) : null;
+    t.avgMoa = withCls.length ? round1(safeAvg(withCls.map((r) => r.cls.moa))) : null;      // ME % + EE %
+    t.band = bandOf(t.avgMoa, settings);                                                    // Teacher Performance Descriptor
+    t.counted = withCls.length;
   }
   return out;
 }
@@ -175,6 +204,15 @@ export function studentPercents(lookups, grade, section, subject, { kind, number
   return out;
 }
 
+// Counts and shares for one class-subject: ME, EE and below, plus the share at ME or above (moa).
+function classify(vals, settings) {
+  const n = vals.length;
+  if (!n) return null;
+  const ee = vals.filter((v) => v >= settings.exceeding).length;
+  const me = vals.filter((v) => v >= settings.meeting && v < settings.exceeding).length;
+  const bme = n - ee - me;
+  return { assessed: n, me, ee, bme, mePct: round1((me / n) * 100), eePct: round1((ee / n) * 100), bmePct: round1((bme / n) * 100), moa: round1(((me + ee) / n) * 100) };
+}
 const cell = (vals, settings) => {
   const n = vals.length;
   if (!n) return null;
