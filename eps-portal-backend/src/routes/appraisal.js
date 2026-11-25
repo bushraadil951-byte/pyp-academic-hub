@@ -127,7 +127,7 @@ router.get('/overview', wrap(async (_req, res) => {
     academicYear: ACADEMIC_YEAR, settings, labels: BAND_LABELS,
     teachers: teachers.map((t) => {
       const a = byTeacher[String(t._id)];
-      return { id: String(t._id), name: t.name, email: t.email || '', assigned: !!a, classes: a ? a.sections.length : 0, overall: a?.overall ?? null, band: a?.band ?? null, counted: a?.counted ?? 0, sections: a?.sections ?? [] };
+      return { id: String(t._id), name: t.name, email: t.email || '', assigned: !!a, classes: a ? a.sections.length : 0, overall: a?.overall ?? null, avgMoa: a?.avgMoa ?? null, band: a?.band ?? null, counted: a?.counted ?? 0, sections: a?.sections ?? [] };
     }),
   });
 }));
@@ -146,16 +146,16 @@ router.get('/reports', wrap(async (_req, res) => {
   const { settings, teachers, byTeacher } = await compute();
   const name = new Map(teachers.map((t) => [String(t._id), t.name]));
   const rows = [];
-  for (const [tid, a] of Object.entries(byTeacher)) for (const r of a.rows) if (r.combined !== null) rows.push({ teacher: name.get(tid) || '—', grade: r.grade, section: r.section, subject: r.subject, role: r.role, combined: r.combined, by: r.by });
+  for (const [tid, a] of Object.entries(byTeacher)) for (const r of a.rows) if (r.combined !== null) rows.push({ teacher: name.get(tid) || '—', grade: r.grade, section: r.section, subject: r.subject, role: r.role, combined: r.combined, moa: r.cls?.moa ?? null, band: r.band, by: r.by });
   const group = (keyFn, label) => {
     const m = new Map();
-    for (const r of rows) { const k = keyFn(r); if (!m.has(k)) m.set(k, { ...label(r), vals: [] }); m.get(k).vals.push(r.combined); }
-    return [...m.values()].map(({ vals, ...g }) => { const avg = Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10; return { ...g, count: vals.length, avg, band: bandOf(avg, settings) }; });
+    for (const r of rows) { const k = keyFn(r); if (!m.has(k)) m.set(k, { ...label(r), vals: [], moas: [] }); m.get(k).vals.push(r.combined); if (r.moa !== null) m.get(k).moas.push(r.moa); }
+    return [...m.values()].map(({ vals, moas, ...g }) => { const avg = Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10; const moa = moas.length ? Math.round((moas.reduce((a, b) => a + b, 0) / moas.length) * 10) / 10 : null; return { ...g, count: vals.length, avg, moa, band: bandOf(moa, settings) }; });
   };
   const gradeOrder = (a, b) => a.grade.localeCompare(b.grade, 'en', { numeric: true });
   res.json({
     academicYear: ACADEMIC_YEAR, settings, labels: BAND_LABELS,
-    classes: rows.map((r) => ({ ...r, band: bandOf(r.combined, settings) })).sort((a, b) => gradeOrder(a, b) || a.section.localeCompare(b.section) || a.subject.localeCompare(b.subject)),
+    classes: rows.sort((a, b) => gradeOrder(a, b) || a.section.localeCompare(b.section) || a.subject.localeCompare(b.subject)),
     grades: group((r) => r.grade, (r) => ({ grade: r.grade })).sort(gradeOrder),
     subjects: group((r) => r.subject, (r) => ({ subject: r.subject })).sort((a, b) => a.subject.localeCompare(b.subject)),
   });
